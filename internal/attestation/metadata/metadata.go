@@ -70,6 +70,9 @@ type Metadata struct {
 	Security struct {
 		Permissions map[string]string `json:"permissions"`
 	} `json:"security"`
+
+	// Root level inputs
+	Inputs map[string]any `json:"inputs"`
 }
 
 func (m *Metadata) Type() string {
@@ -91,7 +94,9 @@ func NewFromGitHubContext(ctx *github.Context, runner *github.Runner, opts Optio
 	}
 	version := fmt.Sprintf("%s-%s", shortSHA, ctx.RunNumber)
 
-	m := &Metadata{}
+	m := &Metadata{
+		Inputs: make(map[string]any), // Initialize root level inputs
+	}
 
 	// Artifact info
 	m.Artifact.Version = version
@@ -108,7 +113,7 @@ func NewFromGitHubContext(ctx *github.Context, runner *github.Runner, opts Optio
 
 	// Owner data
 	m.OwnerData.Owner = ctx.RepositoryOwner
-	m.OwnerData.OwnerID = ctx.OwnerID
+	m.OwnerData.OwnerID = ctx.RepositoryOwnerID
 
 	// Runner data
 	m.RunnerData.OS = runner.OS
@@ -120,6 +125,11 @@ func NewFromGitHubContext(ctx *github.Context, runner *github.Runner, opts Optio
 	m.WorkflowData.Inputs = ctx.Inputs
 	m.WorkflowData.Branch = ctx.RefName
 	m.WorkflowData.Event = ctx.EventName
+
+	// Also set root level inputs
+	for k, v := range ctx.Inputs {
+		m.Inputs[k] = v
+	}
 
 	// Job data
 	m.JobData.RunNumber = ctx.RunNumber

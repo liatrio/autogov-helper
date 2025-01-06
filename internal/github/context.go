@@ -4,6 +4,29 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"strings"
+)
+
+const (
+	// Environment variable names
+	envRepository        = "GITHUB_REPOSITORY"
+	envRepositoryID      = "GITHUB_REPOSITORY_ID"
+	envRepositoryOwner   = "GITHUB_REPOSITORY_OWNER"
+	envRepositoryOwnerID = "GITHUB_REPOSITORY_OWNER_ID"
+	envServerURL         = "GITHUB_SERVER_URL"
+	envSHA               = "GITHUB_SHA"
+	envRefName           = "GITHUB_REF_NAME"
+	envEventName         = "GITHUB_EVENT_NAME"
+	envActor             = "GITHUB_ACTOR"
+	envRunID             = "GITHUB_RUN_ID"
+	envRunNumber         = "GITHUB_RUN_NUMBER"
+	envWorkflowRef       = "GITHUB_WORKFLOW_REF"
+	envJobStatus         = "GITHUB_JOB_STATUS"
+	envEventPath         = "GITHUB_EVENT_PATH"
+	envWorkflowInputs    = "GITHUB_WORKFLOW_INPUTS"
+	envRunnerOS          = "RUNNER_OS"
+	envRunnerArch        = "RUNNER_ARCH"
+	envRunnerEnv         = "RUNNER_ENVIRONMENT"
 )
 
 // Context represents the GitHub Actions context
@@ -15,7 +38,7 @@ type Context struct {
 	ServerURL       string `json:"server_url"`
 
 	// Owner info
-	OwnerID string `json:"repository_owner_id"`
+	RepositoryOwnerID string `json:"repository_owner_id"`
 
 	// Workflow info
 	WorkflowRef string `json:"workflow_ref"`
@@ -40,6 +63,9 @@ type Context struct {
 
 	// Inputs passed to the workflow
 	Inputs map[string]any `json:"inputs"`
+
+	// Job status
+	JobStatus string `json:"job_status"`
 }
 
 // Runner represents GitHub Actions runner context
@@ -49,38 +75,27 @@ type Runner struct {
 	Environment string `json:"environment"`
 }
 
-// LoadFromEnv loads GitHub context from environment variables
+// LoadFromEnv loads GitHub context from individual environment variables
 func LoadFromEnv() (*Context, error) {
 	ctx := &Context{
-		// Repository info
-		Repository:      os.Getenv("GITHUB_REPOSITORY"),
-		RepositoryOwner: os.Getenv("GITHUB_REPOSITORY_OWNER"),
-		RepositoryID:    os.Getenv("GITHUB_REPOSITORY_ID"),
-		ServerURL:       os.Getenv("GITHUB_SERVER_URL"),
-
-		// Owner info
-		OwnerID: os.Getenv("GITHUB_REPOSITORY_OWNER_ID"),
-
-		// Workflow info
-		WorkflowRef: os.Getenv("GITHUB_WORKFLOW_REF"),
-		RefName:     os.Getenv("GITHUB_REF_NAME"),
-		EventName:   os.Getenv("GITHUB_EVENT_NAME"),
-
-		// Run info
-		SHA:       os.Getenv("GITHUB_SHA"),
-		RunNumber: os.Getenv("GITHUB_RUN_NUMBER"),
-		RunID:     os.Getenv("GITHUB_RUN_ID"),
-		Actor:     os.Getenv("GITHUB_ACTOR"),
+		Repository:        os.Getenv(envRepository),
+		RepositoryID:      os.Getenv(envRepositoryID),
+		RepositoryOwner:   os.Getenv(envRepositoryOwner),
+		RepositoryOwnerID: os.Getenv(envRepositoryOwnerID),
+		ServerURL:         os.Getenv(envServerURL),
+		SHA:               os.Getenv(envSHA),
+		RefName:           os.Getenv(envRefName),
+		EventName:         os.Getenv(envEventName),
+		Actor:             os.Getenv(envActor),
+		RunID:             os.Getenv(envRunID),
+		RunNumber:         os.Getenv(envRunNumber),
+		WorkflowRef:       os.Getenv(envWorkflowRef),
+		JobStatus:         os.Getenv(envJobStatus),
+		Inputs:            make(map[string]any),
 	}
 
-	// Load event data from GITHUB_EVENT_PATH
-	eventPath := os.Getenv("GITHUB_EVENT_PATH")
-	if eventPath != "" {
-		eventData, err := os.ReadFile(eventPath)
-		if err != nil {
-			return nil, fmt.Errorf("failed to read event data: %w", err)
-		}
-
+	// Get event data from GITHUB_EVENT_PATH
+	if eventData, err := os.ReadFile(os.Getenv(envEventPath)); err == nil {
 		var event struct {
 			WorkflowRun struct {
 				CreatedAt string `json:"created_at"`
@@ -89,26 +104,31 @@ func LoadFromEnv() (*Context, error) {
 				Timestamp string `json:"timestamp"`
 			} `json:"head_commit"`
 		}
-		if err := json.Unmarshal(eventData, &event); err != nil {
-			return nil, fmt.Errorf("failed to parse event data: %w", err)
+		if err := json.Unmarshal(eventData, &event); err == nil {
+			ctx.Event.WorkflowRun.CreatedAt = event.WorkflowRun.CreatedAt
+			ctx.Event.HeadCommit.Timestamp = event.HeadCommit.Timestamp
 		}
-		ctx.Event = event
 	}
 
-	// Load workflow inputs from GITHUB_EVENT_PATH
-	if eventPath != "" {
-		eventData, err := os.ReadFile(eventPath)
-		if err != nil {
-			return nil, fmt.Errorf("failed to read event data: %w", err)
+	// Get workflow inputs from GITHUB_WORKFLOW_INPUTS
+	if workflowInputs := os.Getenv(envWorkflowInputs); workflowInputs != "" {
+		if err := json.Unmarshal([]byte(workflowInputs), &ctx.Inputs); err != nil {
+			return nil, fmt.Errorf("failed to parse workflow inputs: %w", err)
 		}
+	}
 
-		var event struct {
-			Inputs map[string]any `json:"inputs"`
+	// Also check for direct input variables as fallback
+	for _, env := range os.Environ() {
+		if strings.HasPrefix(env, "INPUT_") {
+			parts := strings.SplitN(env, "=", 2)
+			if len(parts) == 2 {
+				name := strings.ToLower(strings.TrimPrefix(parts[0], "INPUT_"))
+				value := parts[1]
+				if _, exists := ctx.Inputs[name]; !exists {
+					ctx.Inputs[name] = value
+				}
+			}
 		}
-		if err := json.Unmarshal(eventData, &event); err != nil {
-			return nil, fmt.Errorf("failed to parse event data: %w", err)
-		}
-		ctx.Inputs = event.Inputs
 	}
 
 	return ctx, nil
@@ -116,21 +136,19 @@ func LoadFromEnv() (*Context, error) {
 
 // LoadRunnerFromEnv loads runner context from environment variables
 func LoadRunnerFromEnv() (*Runner, error) {
-	osName := os.Getenv("RUNNER_OS")
+	osName := os.Getenv(envRunnerOS)
 	if osName == "" {
 		return nil, fmt.Errorf("RUNNER_OS environment variable not set")
 	}
 
-	arch := os.Getenv("RUNNER_ARCH")
+	arch := os.Getenv(envRunnerArch)
 	if arch == "" {
 		return nil, fmt.Errorf("RUNNER_ARCH environment variable not set")
 	}
 
-	env := os.Getenv("RUNNER_ENVIRONMENT")
-
 	return &Runner{
 		OS:          osName,
 		Arch:        arch,
-		Environment: env,
+		Environment: os.Getenv(envRunnerEnv),
 	}, nil
 }

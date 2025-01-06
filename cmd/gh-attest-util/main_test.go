@@ -13,32 +13,21 @@ import (
 
 func TestMetadataCommand(t *testing.T) {
 	// Setup test environment
-	validJSON := `{
-		"repository": "test-repo",
-		"repository_owner": "test-owner",
-		"repository_id": "123",
-		"server_url": "https://github.com",
-		"repository_owner_id": "456",
-		"workflow_ref": "main",
-		"ref_name": "main",
-		"event_name": "push",
-		"sha": "abc1234567",
-		"run_number": "1",
-		"run_id": "789",
-		"actor": "test-user",
-		"event": {
-			"workflow_run": {
-				"created_at": "2024-03-14T12:00:00Z"
-			},
-			"head_commit": {
-				"timestamp": "2024-03-14T12:00:00Z"
-			}
-		},
-		"inputs": {
-			"test": "value"
-		}
-	}`
-	os.Setenv("GITHUB_CONTEXT", validJSON)
+	os.Setenv("GITHUB_REPOSITORY", "test-repo")
+	os.Setenv("GITHUB_REPOSITORY_OWNER", "test-owner")
+	os.Setenv("GITHUB_REPOSITORY_ID", "123")
+	os.Setenv("GITHUB_SERVER_URL", "https://github.com")
+	os.Setenv("GITHUB_REPOSITORY_OWNER_ID", "456")
+	os.Setenv("GITHUB_WORKFLOW_REF", "main")
+	os.Setenv("GITHUB_REF_NAME", "main")
+	os.Setenv("GITHUB_EVENT_NAME", "push")
+	os.Setenv("GITHUB_SHA", "abc1234")
+	os.Setenv("GITHUB_RUN_NUMBER", "1")
+	os.Setenv("GITHUB_RUN_ID", "789")
+	os.Setenv("GITHUB_ACTOR", "test-user")
+	os.Setenv("GITHUB_JOB_STATUS", "success")
+	os.Setenv("INPUT_TEST", "value")
+
 	os.Setenv("RUNNER_OS", "Linux")
 	os.Setenv("RUNNER_ARCH", "X64")
 	os.Setenv("RUNNER_ENVIRONMENT", "github-hosted")
@@ -57,7 +46,6 @@ func TestMetadataCommand(t *testing.T) {
 			"--subject-name", "test-image",
 			"--digest", "sha256:123",
 			"--registry", "ghcr.io",
-			"--job-status", "success",
 			"--policy-ref", "https://example.com/policy",
 			"--control-ids", "TEST-001,TEST-002",
 		})

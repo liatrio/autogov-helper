@@ -76,14 +76,12 @@ func newMetadataCmd() *cobra.Command {
 	flags.StringVar(&opts.SubjectName, "subject-name", "", "Name of the subject being attested")
 	flags.StringVar(&opts.Digest, "digest", "", "Digest of the subject")
 	flags.StringVar(&opts.Registry, "registry", "", "Registry containing the subject")
-	flags.StringVar(&opts.JobStatus, "job-status", "", "Status of the GitHub Actions job")
 	flags.StringVar(&opts.PolicyRef, "policy-ref", "", "Reference to the policy being applied")
 	flags.StringVar(&controlIds, "control-ids", "", "Comma-separated list of control IDs")
 
 	cobra.CheckErr(cmd.MarkFlagRequired("subject-name"))
 	cobra.CheckErr(cmd.MarkFlagRequired("digest"))
 	cobra.CheckErr(cmd.MarkFlagRequired("registry"))
-	cobra.CheckErr(cmd.MarkFlagRequired("job-status"))
 
 	return cmd
 }

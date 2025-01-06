@@ -13,18 +13,18 @@ import (
 func TestNewFromGitHubContext(t *testing.T) {
 	// Setup test data
 	ctx := &github.Context{
-		Repository:      "test-repo",
-		RepositoryOwner: "test-owner",
-		RepositoryID:    "123",
-		ServerURL:       "https://github.com",
-		OwnerID:         "456",
-		WorkflowRef:     "main",
-		RefName:         "main",
-		EventName:       "push",
-		SHA:             "abc1234567",
-		RunNumber:       "1",
-		RunID:           "789",
-		Actor:           "test-user",
+		Repository:        "test-repo",
+		RepositoryOwner:   "test-owner",
+		RepositoryID:      "123",
+		ServerURL:         "https://github.com",
+		RepositoryOwnerID: "456",
+		WorkflowRef:       "main",
+		RefName:           "main",
+		EventName:         "push",
+		SHA:               "abc1234567",
+		RunNumber:         "1",
+		RunID:             "789",
+		Actor:             "test-user",
 	}
 	ctx.Event.WorkflowRun.CreatedAt = "2024-03-14T12:00:00Z"
 	ctx.Event.HeadCommit.Timestamp = "2024-03-14T12:00:00Z"
