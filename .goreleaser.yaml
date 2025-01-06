@@ -1,0 +1,105 @@
+---
+before:
+  hooks:
+    - go mod tidy
+    - go generate ./...
+    - make
+
+builds:
+  - id: gh-attest-util
+    main: .
+    binary: gh-attest-util
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+      - darwin
+      - windows
+    goarch:
+      - amd64
+      - arm64
+    ignore:
+      - goos: windows
+        goarch: arm64
+
+dockers:
+  - image_templates:
+      - ghcr.io/liatrio/gh-attest-util:{{ .Version }}-amd64
+      - ghcr.io/liatrio/gh-attest-util:latest-amd64
+    use: buildx
+    goos: linux
+    goarch: amd64
+    build_flag_templates:
+      - --pull
+      - --platform=linux/amd64
+      - --label=org.opencontainers.image.title={{.ProjectName}}
+      - --label=org.opencontainers.image.description=GitHub Attestation Utility
+      - --label=org.opencontainers.image.created={{.Date}}
+      - --label=org.opencontainers.image.revision={{.FullCommit}}
+      - --label=org.opencontainers.image.version={{.Version}}
+      - --label=org.opencontainers.image.source={{.GitURL}}
+  - image_templates:
+      - ghcr.io/liatrio/gh-attest-util:{{ .Version }}-arm64
+      - ghcr.io/liatrio/gh-attest-util:latest-arm64
+    use: buildx
+    goos: linux
+    goarch: arm64
+    build_flag_templates:
+      - --pull
+      - --platform=linux/arm64
+      - --label=org.opencontainers.image.title={{.ProjectName}}
+      - --label=org.opencontainers.image.description=GitHub Attestation Utility
+      - --label=org.opencontainers.image.created={{.Date}}
+      - --label=org.opencontainers.image.revision={{.FullCommit}}
+      - --label=org.opencontainers.image.version={{.Version}}
+      - --label=org.opencontainers.image.source={{.GitURL}}
+
+docker_manifests:
+  - name_template: ghcr.io/liatrio/gh-attest-util:{{ .Version }}
+    image_templates:
+      - ghcr.io/liatrio/gh-attest-util:{{ .Version }}-amd64
+      - ghcr.io/liatrio/gh-attest-util:{{ .Version }}-arm64
+  - name_template: ghcr.io/liatrio/gh-attest-util:latest
+    image_templates:
+      - ghcr.io/liatrio/gh-attest-util:latest-amd64
+      - ghcr.io/liatrio/gh-attest-util:latest-arm64
+
+archives:
+  - format: tar.gz
+    name_template: >-
+      {{ .ProjectName }}_{{ .Version }}_
+      {{- title .Os }}_
+      {{- if eq .Arch "amd64" }}x86_64
+      {{- else }}{{ .Arch }}{{ end }}
+    format_overrides:
+      - goos: windows
+        format: zip
+    files:
+      - README.md
+      - LICENSE
+
+checksum:
+  name_template: checksums.txt
+  algorithm: sha256
+
+snapshot:
+  name_template: "{{ incpatch .Version }}-next"
+
+changelog:
+  sort: asc
+  use: github
+  filters:
+    exclude:
+      - "^docs:"
+      - "^test:"
+      - "^ci:"
+      - "^chore:"
+      - Merge pull request
+      - Merge branch
+  groups:
+    - title: Features
+      regexp: "^feat:"
+    - title: Bug Fixes
+      regexp: "^fix:"
+    - title: Others
+      regexp: ".*"
