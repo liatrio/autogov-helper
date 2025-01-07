@@ -77,11 +77,62 @@ func TestMetadataCommand(t *testing.T) {
 		assert.Equal(t, "test-image", artifact["fullName"])
 	})
 
-	t.Run("requires mandatory flags", func(t *testing.T) {
+	t.Run("requires values from flags or environment", func(t *testing.T) {
+		// Clear any existing environment variables that might affect the test
+		os.Unsetenv("GITHUB_WORKFLOW_INPUTS")
+
 		cmd := newMetadataCmd()
 		err := cmd.Execute()
 		assert.Error(t, err)
-		assert.Contains(t, err.Error(), "required flag")
+		assert.Contains(t, err.Error(), "subject-name is required")
+
+		// Test with subject-name but missing digest
+		cmd = newMetadataCmd()
+		cmd.SetArgs([]string{"--subject-name", "test-image"})
+		err = cmd.Execute()
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "digest is required")
+
+		// Test with subject-name and digest but missing registry
+		cmd = newMetadataCmd()
+		cmd.SetArgs([]string{
+			"--subject-name", "test-image",
+			"--digest", "sha256:123",
+		})
+		err = cmd.Execute()
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "registry is required")
+	})
+
+	t.Run("uses values from environment", func(t *testing.T) {
+		// Set up environment variables
+		workflowInputs := `{
+			"subject-name": "env-test-image",
+			"digest": "sha256:456",
+			"registry": "ghcr.io"
+		}`
+		os.Setenv("GITHUB_WORKFLOW_INPUTS", workflowInputs)
+		defer os.Unsetenv("GITHUB_WORKFLOW_INPUTS")
+
+		var buf bytes.Buffer
+		cmd := newMetadataCmd()
+		cmd.SetOut(&buf)
+		cmd.SetErr(&buf)
+
+		// Execute without flags, should use environment values
+		err := cmd.Execute()
+		assert.NoError(t, err)
+
+		// Verify output
+		output := buf.String()
+		var result map[string]interface{}
+		err = json.Unmarshal([]byte(output), &result)
+		assert.NoError(t, err)
+
+		artifact := result["artifact"].(map[string]interface{})
+		assert.Equal(t, "env-test-image", artifact["fullName"])
+		assert.Equal(t, "sha256:456", artifact["digest"])
+		assert.Equal(t, "ghcr.io", artifact["registry"])
 	})
 }
 

@@ -176,6 +176,7 @@ func NewFromGitHubContext(ctx *github.Context, runner *github.Runner, opts Optio
 	return m, nil
 }
 
+// Options represents the options for generating metadata
 type Options struct {
 	SubjectName string
 	Digest      string
@@ -183,4 +184,5 @@ type Options struct {
 	JobStatus   string
 	PolicyRef   string
 	ControlIds  []string
+	SubjectPath string
 }

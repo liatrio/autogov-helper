@@ -117,7 +117,7 @@ func LoadFromEnv() (*Context, error) {
 		}
 	}
 
-	// Also check for direct input variables as fallback
+	// Check for direct input variables as fallback
 	for _, env := range os.Environ() {
 		if strings.HasPrefix(env, "INPUT_") {
 			parts := strings.SplitN(env, "=", 2)
