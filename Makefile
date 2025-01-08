@@ -4,10 +4,10 @@ all: lint test build
 
 build:
 	mkdir -p bin
-	go build -o bin/gh-attest-util ./cmd/gh-attest-util
+	go build -o bin/gh-attest-util .
 
 test:
-	go test ./... -v
+	go test ./...
 
 lint:
 	golangci-lint run

@@ -32,10 +32,12 @@ jobs:
 
       - name: Build and package
         if: steps.semrel.outputs.version != ''
+        env:
+          RELEASE_VERSION: ${{ steps.semrel.outputs.version }}
         run: |
-          echo "Creating release version v${steps.semrel.outputs.version}"
-          go test -v .
-          go build -ldflags "-X main.version=v${steps.semrel.outputs.version}" -o gh-attest-util
+          echo "Creating release version v${RELEASE_VERSION}"
+          go test -v ./...
+          go build -ldflags "-X main.version=v${RELEASE_VERSION}" -o gh-attest-util .
           tar czf gh-attest-util.tar.gz gh-attest-util
 
       - name: Create Release
