@@ -7,7 +7,7 @@ build:
 	go build -o bin/gh-attest-util ./cmd/gh-attest-util
 
 test:
-	go test ./... -v
+	go test ./...
 
 lint:
 	golangci-lint run

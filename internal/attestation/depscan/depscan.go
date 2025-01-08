@@ -47,6 +47,33 @@ type Options struct {
 	ResultsPath string
 }
 
+type GrypeResults struct {
+	Descriptor struct {
+		Version       string `json:"version"`
+		Configuration struct {
+			DB struct {
+				UpdateURL string `json:"update-url"`
+			} `json:"db"`
+		} `json:"configuration"`
+		DB struct {
+			SchemaVersion string `json:"schemaVersion"`
+			Built         string `json:"built"`
+		} `json:"db"`
+		Timestamp string `json:"timestamp"`
+	} `json:"descriptor"`
+	Matches []struct {
+		Vulnerability struct {
+			ID       string `json:"id"`
+			Severity string `json:"severity"`
+			CVSS     []struct {
+				Metrics struct {
+					BaseScore float64 `json:"baseScore"`
+				} `json:"metrics"`
+			} `json:"cvss"`
+		} `json:"vulnerability"`
+	} `json:"matches"`
+}
+
 // creates a new DependencyScan from Grype results
 func NewFromGrypeResults(opts Options) (*DependencyScan, error) {
 	resultsData, err := os.ReadFile(opts.ResultsPath)
@@ -54,33 +81,7 @@ func NewFromGrypeResults(opts Options) (*DependencyScan, error) {
 		return nil, fmt.Errorf("failed to read results file: %w", err)
 	}
 
-	var grypeResults struct {
-		Descriptor struct {
-			Version       string `json:"version"`
-			Configuration struct {
-				DB struct {
-					UpdateURL string `json:"update-url"`
-				} `json:"db"`
-			} `json:"configuration"`
-			DB struct {
-				SchemaVersion string `json:"schemaVersion"`
-				Built         string `json:"built"`
-			} `json:"db"`
-			Timestamp string `json:"timestamp"`
-		} `json:"descriptor"`
-		Matches []struct {
-			Vulnerability struct {
-				ID       string `json:"id"`
-				Severity string `json:"severity"`
-				CVSS     []struct {
-					Metrics struct {
-						BaseScore float64 `json:"baseScore"`
-					} `json:"metrics"`
-				} `json:"cvss"`
-			} `json:"vulnerability"`
-		} `json:"matches"`
-	}
-
+	var grypeResults GrypeResults
 	if err := json.Unmarshal(resultsData, &grypeResults); err != nil {
 		return nil, fmt.Errorf("failed to parse results: %w", err)
 	}
