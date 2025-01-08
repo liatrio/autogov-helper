@@ -5,7 +5,7 @@ tmp_dir = "tmp"
 [build]
   args_bin = []
   bin = "./tmp/main"
-  cmd = 'CGO_ENABLED=0 go build -gcflags=all="-N -l" -o ./tmp/main ./cmd/gh-attest-util'
+  cmd = 'CGO_ENABLED=0 go build -gcflags=all="-N -l" -o ./tmp/main .'
   delay = 1000
   exclude_dir = ["assets", "tmp", "vendor", "testdata"]
   exclude_file = []

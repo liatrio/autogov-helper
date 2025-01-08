@@ -1,0 +1,50 @@
+package depscan
+
+import (
+	"fmt"
+	"os"
+
+	"gh-attest-util/internal/attestation/depscan"
+
+	"github.com/spf13/cobra"
+)
+
+func NewCommand() *cobra.Command {
+	var opts depscan.Options
+	var outputFile string
+
+	cmd := &cobra.Command{
+		Use:   "depscan",
+		Short: "Generate dependency scan predicate",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			scan, err := depscan.NewFromGrypeResults(opts)
+			if err != nil {
+				return fmt.Errorf("failed to process scan results: %w", err)
+			}
+
+			output, err := scan.Generate()
+			if err != nil {
+				return fmt.Errorf("failed to generate predicate: %w", err)
+			}
+
+			if outputFile != "" {
+				if err := os.WriteFile(outputFile, output, 0600); err != nil {
+					return fmt.Errorf("failed to write output file: %w", err)
+				}
+			} else {
+				if _, err := fmt.Fprintln(cmd.OutOrStdout(), string(output)); err != nil {
+					return fmt.Errorf("failed to write output: %w", err)
+				}
+			}
+
+			return nil
+		},
+	}
+
+	flags := cmd.Flags()
+	flags.StringVar(&opts.ResultsPath, "results-path", "", "Path to Grype results JSON file")
+	flags.StringVar(&outputFile, "output", "", "Output file path (defaults to stdout)")
+	cobra.CheckErr(cmd.MarkFlagRequired("results-path"))
+
+	return cmd
+}

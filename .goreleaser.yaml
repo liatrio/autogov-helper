@@ -7,7 +7,7 @@ before:
 
 builds:
   - id: gh-attest-util
-    main: ./cmd/gh-attest-util
+    main: .
     binary: gh-attest-util
     env:
       - CGO_ENABLED=0
