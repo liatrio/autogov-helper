@@ -57,7 +57,7 @@ jobs:
           if [[ "${{ github.ref_type }}" == "branch" ]]; then
             VERSION="${VERSION}-${GITHUB_SHA::8}"
           fi
-          go build -ldflags "-X main.version=${VERSION}" -o bin/gh-attest-util ./cmd/gh-attest-util
+          go build -ldflags "-X main.version=${VERSION}" -o bin/gh-attest-util .
       - name: Upload binary
         uses: actions/upload-artifact@b4b15b8c7c6ac21ea08fcf65892d2ee8f75cf882 # v4.4.3
         with:
