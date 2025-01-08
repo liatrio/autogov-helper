@@ -1,11 +1,16 @@
-.PHONY: lint
-lint:
-	golangci-lint run
+.PHONY: build test clean lint all
 
-.PHONY: test
+all: lint test build
+
+build:
+	mkdir -p bin
+	go build -o bin/gh-attest-util ./cmd/gh-attest-util
+
 test:
 	go test ./... -v
 
-.PHONY: build
-build:
-	go build -o gh-attest-util
+lint:
+	golangci-lint run
+
+clean:
+	rm -rf bin/
