@@ -83,11 +83,20 @@ func (m *Metadata) Generate() ([]byte, error) {
 	return json.MarshalIndent(m, "", "  ")
 }
 
+type Options struct {
+	SubjectName string
+	Digest      string
+	Registry    string
+	JobStatus   string
+	PolicyRef   string
+	ControlIds  []string
+	SubjectPath string
+}
+
 // NewFromGitHubContext creates a new Metadata instance from GitHub context
 func NewFromGitHubContext(ctx *github.Context, runner *github.Runner, opts Options) (*Metadata, error) {
 	now := time.Now().UTC()
 
-	// Make SHA slicing safe
 	shortSHA := ctx.SHA
 	if len(ctx.SHA) >= 7 {
 		shortSHA = ctx.SHA[:7]
@@ -126,7 +135,6 @@ func NewFromGitHubContext(ctx *github.Context, runner *github.Runner, opts Optio
 	m.WorkflowData.Branch = ctx.RefName
 	m.WorkflowData.Event = ctx.EventName
 
-	// Also set root level inputs
 	for k, v := range ctx.Inputs {
 		m.Inputs[k] = v
 	}
@@ -174,15 +182,4 @@ func NewFromGitHubContext(ctx *github.Context, runner *github.Runner, opts Optio
 	}
 
 	return m, nil
-}
-
-// Options represents the options for generating metadata
-type Options struct {
-	SubjectName string
-	Digest      string
-	Registry    string
-	JobStatus   string
-	PolicyRef   string
-	ControlIds  []string
-	SubjectPath string
 }

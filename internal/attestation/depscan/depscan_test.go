@@ -59,7 +59,7 @@ func TestNewFromGrypeResults(t *testing.T) {
 		]
 	}`
 
-	err := os.WriteFile(resultsPath, []byte(sampleResults), 0644)
+	err := os.WriteFile(resultsPath, []byte(sampleResults), 0600)
 	require.NoError(t, err)
 
 	t.Run("successfully parses grype results", func(t *testing.T) {
@@ -109,7 +109,7 @@ func TestNewFromGrypeResults(t *testing.T) {
 
 	t.Run("handles invalid json", func(t *testing.T) {
 		invalidPath := filepath.Join(tmpDir, "invalid.json")
-		err := os.WriteFile(invalidPath, []byte("invalid json"), 0644)
+		err := os.WriteFile(invalidPath, []byte("invalid json"), 0600)
 		require.NoError(t, err)
 
 		_, err = NewFromGrypeResults(Options{

@@ -110,7 +110,7 @@ func newMetadataCmd() *cobra.Command {
 
 			// Write to file if output flag is set, otherwise write to stdout
 			if outputFile != "" {
-				if err := os.WriteFile(outputFile, output, 0644); err != nil {
+				if err := os.WriteFile(outputFile, output, 0600); err != nil {
 					return fmt.Errorf("failed to write output file: %w", err)
 				}
 			} else {
@@ -157,7 +157,7 @@ func newDepscanCmd() *cobra.Command {
 
 			// Write to file if output flag is set, otherwise write to stdout
 			if outputFile != "" {
-				if err := os.WriteFile(outputFile, output, 0644); err != nil {
+				if err := os.WriteFile(outputFile, output, 0600); err != nil {
 					return fmt.Errorf("failed to write output file: %w", err)
 				}
 			} else {

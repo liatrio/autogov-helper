@@ -56,7 +56,7 @@ func TestLoadFromEnv(t *testing.T) {
 		// Create a temporary event file
 		tmpDir := t.TempDir()
 		eventPath := filepath.Join(tmpDir, "event.json")
-		err := os.WriteFile(eventPath, []byte(eventData), 0644)
+		err := os.WriteFile(eventPath, []byte(eventData), 0600)
 		assert.NoError(t, err)
 
 		os.Setenv("GITHUB_EVENT_PATH", eventPath)

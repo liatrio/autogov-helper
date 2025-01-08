@@ -106,28 +106,41 @@ func TestMetadataCommand(t *testing.T) {
 
 	t.Run("uses values from environment", func(t *testing.T) {
 		// Set up environment variables
-		workflowInputs := `{
-			"subject-name": "env-test-image",
-			"digest": "sha256:456",
-			"registry": "ghcr.io"
+		eventData := `{
+			"workflow_run": {
+				"created_at": "2024-01-06T12:00:00Z"
+			},
+			"head_commit": {
+				"timestamp": "2024-01-06T12:00:00Z"
+			}
 		}`
-		os.Setenv("GITHUB_WORKFLOW_INPUTS", workflowInputs)
-		defer os.Unsetenv("GITHUB_WORKFLOW_INPUTS")
+		tmpDir := t.TempDir()
+		eventPath := filepath.Join(tmpDir, "event.json")
+		err := os.WriteFile(eventPath, []byte(eventData), 0600)
+		require.NoError(t, err)
+		os.Setenv("GITHUB_EVENT_PATH", eventPath)
+
+		// Set required inputs
+		cmd := newMetadataCmd()
+		cmd.SetArgs([]string{
+			"--subject-name", "env-test-image",
+			"--digest", "sha256:456",
+			"--registry", "ghcr.io",
+		})
 
 		var buf bytes.Buffer
-		cmd := newMetadataCmd()
 		cmd.SetOut(&buf)
 		cmd.SetErr(&buf)
 
-		// Execute without flags, should use environment values
-		err := cmd.Execute()
-		assert.NoError(t, err)
+		// Execute command
+		err = cmd.Execute()
+		require.NoError(t, err)
 
 		// Verify output
 		output := buf.String()
 		var result map[string]interface{}
 		err = json.Unmarshal([]byte(output), &result)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		artifact := result["artifact"].(map[string]interface{})
 		assert.Equal(t, "env-test-image", artifact["fullName"])
@@ -172,7 +185,7 @@ func TestDepscanCommand(t *testing.T) {
 		]
 	}`
 
-	err := os.WriteFile(resultsPath, []byte(sampleResults), 0644)
+	err := os.WriteFile(resultsPath, []byte(sampleResults), 0600)
 	require.NoError(t, err)
 
 	t.Run("generates valid dependency scan", func(t *testing.T) {
