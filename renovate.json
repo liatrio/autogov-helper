@@ -1,0 +1,54 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "configMigration": true,
+  "extends": [
+    "config:recommended"
+  ],
+  "constraints": {
+    "go": "1.23"
+  },
+  "schedule": [
+    "before 5am every weekday"
+  ],
+  "labels": [
+    "renovate",
+    "dependencies"
+  ],
+  "packageRules": [
+    {
+      "matchManagers": [
+        "dockerfile"
+      ],
+      "groupName": "dockerfile deps"
+    },
+    {
+      "extends": [
+        ":semanticPrefixFixDepsChoreOthers",
+        "helpers:pinGitHubActionDigests"
+      ],
+      "matchManagers": [
+        "github-actions"
+      ],
+      "pinDigests": true,
+      "groupName": "github-actions deps"
+    },
+    {
+      "matchManagers": [
+        "gomod"
+      ],
+      "matchUpdateTypes": [
+        "major"
+      ],
+      "prBodyNotes": [
+        ":warning: MAJOR VERSION UPDATE :warning: - please manually update this package"
+      ],
+      "labels": [
+        "dependency-major-update"
+      ]
+    }
+  ],
+  "prConcurrentLimit": 10,
+  "suppressNotifications": [
+    "prEditedNotification"
+  ]
+}
