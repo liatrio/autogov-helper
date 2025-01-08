@@ -71,7 +71,6 @@ type Metadata struct {
 		Permissions map[string]string `json:"permissions"`
 	} `json:"security"`
 
-	// Root level inputs
 	Inputs map[string]any `json:"inputs"`
 }
 
@@ -93,8 +92,8 @@ type Options struct {
 	SubjectPath string
 }
 
-// NewFromGitHubContext creates a new Metadata instance from GitHub context
-func NewFromGitHubContext(ctx *github.Context, runner *github.Runner, opts Options) (*Metadata, error) {
+// creates a new Metadata instance from GitHub context
+func NewFromGitHubContext(ctx *github.Context, opts Options) (*Metadata, error) {
 	now := time.Now().UTC()
 
 	shortSHA := ctx.SHA
@@ -104,10 +103,9 @@ func NewFromGitHubContext(ctx *github.Context, runner *github.Runner, opts Optio
 	version := fmt.Sprintf("%s-%s", shortSHA, ctx.RunNumber)
 
 	m := &Metadata{
-		Inputs: make(map[string]any), // Initialize root level inputs
+		Inputs: make(map[string]any),
 	}
 
-	// Artifact info
 	m.Artifact.Version = version
 	m.Artifact.Digest = opts.Digest
 	m.Artifact.Created = now
@@ -115,21 +113,21 @@ func NewFromGitHubContext(ctx *github.Context, runner *github.Runner, opts Optio
 	m.Artifact.Registry = opts.Registry
 	m.Artifact.FullName = opts.SubjectName
 
-	// Repository data
+	// repo data
 	m.RepositoryData.Repository = ctx.Repository
 	m.RepositoryData.RepositoryID = ctx.RepositoryID
 	m.RepositoryData.GitHubServerURL = ctx.ServerURL
 
-	// Owner data
+	// owner data
 	m.OwnerData.Owner = ctx.RepositoryOwner
 	m.OwnerData.OwnerID = ctx.RepositoryOwnerID
 
-	// Runner data
-	m.RunnerData.OS = runner.OS
-	m.RunnerData.Arch = runner.Arch
-	m.RunnerData.Environment = runner.Environment
+	// runner data
+	m.RunnerData.OS = ctx.Runner.OS
+	m.RunnerData.Arch = ctx.Runner.Arch
+	m.RunnerData.Environment = ctx.Runner.Environment
 
-	// Workflow data
+	// wf data
 	m.WorkflowData.WorkflowRefPath = ctx.WorkflowRef
 	m.WorkflowData.Inputs = ctx.Inputs
 	m.WorkflowData.Branch = ctx.RefName
@@ -139,7 +137,7 @@ func NewFromGitHubContext(ctx *github.Context, runner *github.Runner, opts Optio
 		m.Inputs[k] = v
 	}
 
-	// Job data
+	// job data
 	m.JobData.RunNumber = ctx.RunNumber
 	m.JobData.RunID = ctx.RunID
 	m.JobData.Status = opts.JobStatus
@@ -149,16 +147,16 @@ func NewFromGitHubContext(ctx *github.Context, runner *github.Runner, opts Optio
 	}
 	m.JobData.CompletedAt = now
 
-	// Commit data
+	// commit data
 	m.CommitData.SHA = ctx.SHA
 	if commitTime, err := time.Parse(time.RFC3339, ctx.Event.HeadCommit.Timestamp); err == nil {
 		m.CommitData.Timestamp = commitTime
 	}
 
-	// Organization
+	// org owner
 	m.Organization.Name = ctx.RepositoryOwner
 
-	// Compliance
+	// control ids
 	m.Compliance.PolicyRef = "https://github.com/liatrio/demo-gh-autogov-policy-library"
 	if opts.PolicyRef != "" {
 		m.Compliance.PolicyRef = opts.PolicyRef
@@ -173,7 +171,7 @@ func NewFromGitHubContext(ctx *github.Context, runner *github.Runner, opts Optio
 		m.Compliance.ControlIds = opts.ControlIds
 	}
 
-	// Security
+	// gha permissions
 	m.Security.Permissions = map[string]string{
 		"id-token":     "write",
 		"attestations": "write",

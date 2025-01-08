@@ -47,7 +47,7 @@ type Options struct {
 	ResultsPath string
 }
 
-// NewFromGrypeResults creates a new DependencyScan from Grype results
+// creates a new DependencyScan from Grype results
 func NewFromGrypeResults(opts Options) (*DependencyScan, error) {
 	resultsData, err := os.ReadFile(opts.ResultsPath)
 	if err != nil {
@@ -87,18 +87,15 @@ func NewFromGrypeResults(opts Options) (*DependencyScan, error) {
 
 	scan := &DependencyScan{}
 
-	// Set scanner info
 	scan.Scanner.URI = fmt.Sprintf("https://github.com/anchore/grype/releases/tag/v%s", grypeResults.Descriptor.Version)
 	scan.Scanner.Version = grypeResults.Descriptor.Version
 	scan.Scanner.DB.URI = grypeResults.Descriptor.Configuration.DB.UpdateURL
 	scan.Scanner.DB.Version = grypeResults.Descriptor.DB.SchemaVersion
 	scan.Scanner.DB.LastUpdate = grypeResults.Descriptor.DB.Built
 
-	// Set metadata
 	scan.Metadata.ScanStartedOn = grypeResults.Descriptor.DB.Built
 	scan.Metadata.ScanFinishedOn = grypeResults.Descriptor.Timestamp
 
-	// Process vulnerabilities
 	for _, match := range grypeResults.Matches {
 		vuln := Vulnerability{
 			ID: match.Vulnerability.ID,

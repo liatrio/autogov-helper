@@ -47,12 +47,7 @@ func newMetadataCmd() *cobra.Command {
 				return fmt.Errorf("failed to load GitHub context: %w", err)
 			}
 
-			runner, err := github.LoadRunnerFromEnv()
-			if err != nil {
-				return fmt.Errorf("failed to load runner context: %w", err)
-			}
-
-			// Use values from environment if flags are not set
+			// use env vars if flags are not set
 			if opts.SubjectName == "" {
 				if subjectName, ok := ctx.Inputs["subject-name"].(string); ok {
 					opts.SubjectName = subjectName
@@ -63,18 +58,18 @@ func newMetadataCmd() *cobra.Command {
 				if registry, ok := ctx.Inputs["registry"].(string); ok {
 					opts.Registry = registry
 				} else if buildType == "blob" {
-					opts.Registry = "local" // Default for blobs
+					opts.Registry = "local" // default for blobs
 				}
 			}
 
-			// For blobs, get subject-path from inputs if not set
+			// for blobs, get subject-path from inputs if not set
 			if buildType == "blob" && opts.SubjectPath == "" {
 				if subjectPath, ok := ctx.Inputs["subject-path"].(string); ok {
 					opts.SubjectPath = subjectPath
 				}
 			}
 
-			// Validate required values based on build type
+			// validate required values based on build type
 			if opts.SubjectName == "" {
 				return fmt.Errorf("subject-name is required (either as flag or in environment)")
 			}
@@ -98,7 +93,7 @@ func newMetadataCmd() *cobra.Command {
 				opts.ControlIds = strings.Split(controlIds, ",")
 			}
 
-			m, err := metadata.NewFromGitHubContext(ctx, runner, opts)
+			m, err := metadata.NewFromGitHubContext(ctx, opts)
 			if err != nil {
 				return fmt.Errorf("failed to create metadata: %w", err)
 			}
@@ -108,7 +103,7 @@ func newMetadataCmd() *cobra.Command {
 				return fmt.Errorf("failed to generate metadata: %w", err)
 			}
 
-			// Write to file if output flag is set, otherwise write to stdout
+			// write to file if output flag set, otherwise write to stdout
 			if outputFile != "" {
 				if err := os.WriteFile(outputFile, output, 0600); err != nil {
 					return fmt.Errorf("failed to write output file: %w", err)
@@ -155,7 +150,7 @@ func newDepscanCmd() *cobra.Command {
 				return fmt.Errorf("failed to generate predicate: %w", err)
 			}
 
-			// Write to file if output flag is set, otherwise write to stdout
+			// write to file if output flag set, otherwise write to stdout
 			if outputFile != "" {
 				if err := os.WriteFile(outputFile, output, 0600); err != nil {
 					return fmt.Errorf("failed to write output file: %w", err)

@@ -11,7 +11,6 @@ import (
 )
 
 func TestNewFromGrypeResults(t *testing.T) {
-	// Create temporary test file
 	tmpDir := t.TempDir()
 	resultsPath := filepath.Join(tmpDir, "results.json")
 
@@ -75,14 +74,11 @@ func TestNewFromGrypeResults(t *testing.T) {
 		assert.Equal(t, "5", scan.Scanner.DB.Version)
 		assert.Equal(t, "2024-01-06T14:00:00Z", scan.Scanner.DB.LastUpdate)
 
-		// Verify metadata
 		assert.Equal(t, "2024-01-06T14:00:00Z", scan.Metadata.ScanStartedOn)
 		assert.Equal(t, "2024-01-06T15:00:00Z", scan.Metadata.ScanFinishedOn)
 
-		// Verify vulnerabilities
 		require.Len(t, scan.Scanner.Result, 2)
 
-		// First vulnerability
 		assert.Equal(t, "CVE-2023-1234", scan.Scanner.Result[0].ID)
 		require.Len(t, scan.Scanner.Result[0].Severity, 2)
 		assert.Equal(t, "nvd", scan.Scanner.Result[0].Severity[0].Method)
@@ -90,7 +86,6 @@ func TestNewFromGrypeResults(t *testing.T) {
 		assert.Equal(t, "cvss_score", scan.Scanner.Result[0].Severity[1].Method)
 		assert.Equal(t, "8.5", scan.Scanner.Result[0].Severity[1].Score)
 
-		// Second vulnerability
 		assert.Equal(t, "CVE-2023-5678", scan.Scanner.Result[1].ID)
 		require.Len(t, scan.Scanner.Result[1].Severity, 2)
 		assert.Equal(t, "nvd", scan.Scanner.Result[1].Severity[0].Method)

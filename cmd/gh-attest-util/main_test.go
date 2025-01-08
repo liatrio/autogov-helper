@@ -12,7 +12,6 @@ import (
 )
 
 func TestMetadataCommand(t *testing.T) {
-	// Setup test environment
 	os.Setenv("GITHUB_REPOSITORY", "test-repo")
 	os.Setenv("GITHUB_REPOSITORY_OWNER", "test-owner")
 	os.Setenv("GITHUB_REPOSITORY_ID", "123")
@@ -33,15 +32,12 @@ func TestMetadataCommand(t *testing.T) {
 	os.Setenv("RUNNER_ENVIRONMENT", "github-hosted")
 
 	t.Run("generates valid metadata", func(t *testing.T) {
-		// Create a buffer to capture output
 		var buf bytes.Buffer
 
-		// Create and configure command
 		cmd := newMetadataCmd()
 		cmd.SetOut(&buf)
 		cmd.SetErr(&buf)
 
-		// Set command arguments
 		cmd.SetArgs([]string{
 			"--subject-name", "test-image",
 			"--digest", "sha256:123",
@@ -50,25 +46,20 @@ func TestMetadataCommand(t *testing.T) {
 			"--control-ids", "TEST-001,TEST-002",
 		})
 
-		// Execute command
 		err := cmd.Execute()
 		assert.NoError(t, err)
 
-		// Get output
 		output := buf.String()
 		assert.NotEmpty(t, output)
 
-		// Verify output is valid JSON
 		var result map[string]interface{}
 		err = json.Unmarshal([]byte(output), &result)
 		assert.NoError(t, err)
 
-		// Verify required sections exist
 		assert.Contains(t, result, "artifact")
 		assert.Contains(t, result, "repositoryData")
 		assert.Contains(t, result, "security")
 
-		// Verify specific values
 		artifact := result["artifact"].(map[string]interface{})
 		assert.Equal(t, "abc1234-1", artifact["version"])
 		assert.Equal(t, "sha256:123", artifact["digest"])
@@ -78,7 +69,6 @@ func TestMetadataCommand(t *testing.T) {
 	})
 
 	t.Run("requires values from flags or environment", func(t *testing.T) {
-		// Clear any existing environment variables that might affect the test
 		os.Unsetenv("GITHUB_WORKFLOW_INPUTS")
 
 		cmd := newMetadataCmd()
@@ -86,14 +76,12 @@ func TestMetadataCommand(t *testing.T) {
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "subject-name is required")
 
-		// Test with subject-name but missing digest
 		cmd = newMetadataCmd()
 		cmd.SetArgs([]string{"--subject-name", "test-image"})
 		err = cmd.Execute()
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "digest is required")
 
-		// Test with subject-name and digest but missing registry
 		cmd = newMetadataCmd()
 		cmd.SetArgs([]string{
 			"--subject-name", "test-image",
@@ -105,7 +93,6 @@ func TestMetadataCommand(t *testing.T) {
 	})
 
 	t.Run("uses values from environment", func(t *testing.T) {
-		// Set up environment variables
 		eventData := `{
 			"workflow_run": {
 				"created_at": "2024-01-06T12:00:00Z"
@@ -120,7 +107,6 @@ func TestMetadataCommand(t *testing.T) {
 		require.NoError(t, err)
 		os.Setenv("GITHUB_EVENT_PATH", eventPath)
 
-		// Set required inputs
 		cmd := newMetadataCmd()
 		cmd.SetArgs([]string{
 			"--subject-name", "env-test-image",
@@ -132,11 +118,9 @@ func TestMetadataCommand(t *testing.T) {
 		cmd.SetOut(&buf)
 		cmd.SetErr(&buf)
 
-		// Execute command
 		err = cmd.Execute()
 		require.NoError(t, err)
 
-		// Verify output
 		output := buf.String()
 		var result map[string]interface{}
 		err = json.Unmarshal([]byte(output), &result)
@@ -150,7 +134,6 @@ func TestMetadataCommand(t *testing.T) {
 }
 
 func TestDepscanCommand(t *testing.T) {
-	// Create temporary test file
 	tmpDir := t.TempDir()
 	resultsPath := filepath.Join(tmpDir, "results.json")
 

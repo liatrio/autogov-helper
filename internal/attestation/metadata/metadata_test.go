@@ -11,7 +11,6 @@ import (
 )
 
 func TestNewFromGitHubContext(t *testing.T) {
-	// Setup test data
 	ctx := &github.Context{
 		Repository:        "test-repo",
 		RepositoryOwner:   "test-owner",
@@ -25,15 +24,14 @@ func TestNewFromGitHubContext(t *testing.T) {
 		RunNumber:         "1",
 		RunID:             "789",
 		Actor:             "test-user",
+		Runner: &github.Runner{
+			OS:          "Linux",
+			Arch:        "X64",
+			Environment: "github-hosted",
+		},
 	}
 	ctx.Event.WorkflowRun.CreatedAt = "2024-03-14T12:00:00Z"
 	ctx.Event.HeadCommit.Timestamp = "2024-03-14T12:00:00Z"
-
-	runner := &github.Runner{
-		OS:          "Linux",
-		Arch:        "X64",
-		Environment: "github-hosted",
-	}
 
 	opts := Options{
 		SubjectName: "test-image",
@@ -44,21 +42,17 @@ func TestNewFromGitHubContext(t *testing.T) {
 		ControlIds:  []string{"TEST-001", "TEST-002"},
 	}
 
-	// Test metadata generation
 	t.Run("generates valid metadata", func(t *testing.T) {
-		m, err := NewFromGitHubContext(ctx, runner, opts)
+		m, err := NewFromGitHubContext(ctx, opts)
 		assert.NoError(t, err)
 
-		// Test metadata generation
 		data, err := m.Generate()
 		assert.NoError(t, err)
 
-		// Verify JSON structure
 		var result map[string]interface{}
 		err = json.Unmarshal(data, &result)
 		assert.NoError(t, err)
 
-		// Verify key sections
 		assert.Contains(t, result, "artifact")
 		assert.Contains(t, result, "repositoryData")
 		assert.Contains(t, result, "ownerData")
@@ -70,7 +64,6 @@ func TestNewFromGitHubContext(t *testing.T) {
 		assert.Contains(t, result, "compliance")
 		assert.Contains(t, result, "security")
 
-		// Verify specific values
 		artifact := result["artifact"].(map[string]interface{})
 		assert.Equal(t, "abc1234-1", artifact["version"])
 		assert.Equal(t, "sha256:123", artifact["digest"])
@@ -78,7 +71,6 @@ func TestNewFromGitHubContext(t *testing.T) {
 		assert.Equal(t, "ghcr.io", artifact["registry"])
 		assert.Equal(t, "test-image", artifact["fullName"])
 
-		// Verify timestamps are valid
 		_, err = time.Parse(time.RFC3339, artifact["created"].(string))
 		assert.NoError(t, err)
 	})
