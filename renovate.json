@@ -4,6 +4,7 @@
   "extends": [
     "config:recommended"
   ],
+  "dependencyDashboard": false,
   "constraints": {
     "go": "1.23"
   },

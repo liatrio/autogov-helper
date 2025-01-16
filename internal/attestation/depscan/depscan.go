@@ -6,7 +6,7 @@ import (
 	"os"
 )
 
-const PredicateTypeURI = "https://liatr.io/attestations/dependency-scan/v1"
+const PredicateTypeURI = "https://in-toto.io/attestation/vulns/v0.2"
 
 type DependencyScan struct {
 	Scanner struct {
