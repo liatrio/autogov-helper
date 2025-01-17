@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"os"
 
-	"gh-attest-util/internal/attestation/depscan"
+	depscan "gh-attest-util/internal/attestation/depscan"
 
 	"github.com/spf13/cobra"
 )
@@ -43,8 +43,12 @@ func NewCommand() *cobra.Command {
 
 	flags := cmd.Flags()
 	flags.StringVar(&opts.ResultsPath, "results-path", "", "Path to Grype results JSON file")
+	flags.StringVar(&opts.SubjectName, "subject-name", "", "Name of the subject being scanned")
+	flags.StringVar(&opts.Digest, "digest", "", "Digest of the subject being scanned")
 	flags.StringVar(&outputFile, "output", "", "Output file path (defaults to stdout)")
 	cobra.CheckErr(cmd.MarkFlagRequired("results-path"))
+	cobra.CheckErr(cmd.MarkFlagRequired("subject-name"))
+	cobra.CheckErr(cmd.MarkFlagRequired("digest"))
 
 	return cmd
 }

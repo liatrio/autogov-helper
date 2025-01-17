@@ -75,7 +75,7 @@ type Runner struct {
 	Environment string `json:"environment"`
 }
 
-// load gh context from env vars
+// loads gh context from individual environment variables
 func LoadFromEnv() (*Context, error) {
 	ctx := &Context{
 		Repository:        os.Getenv(envRepository),

@@ -12,75 +12,84 @@ import (
 )
 
 func TestDepscanCommand(t *testing.T) {
-	tmpDir := t.TempDir()
-	resultsPath := filepath.Join(tmpDir, "results.json")
+	t.Run("generates valid dependency scan", func(t *testing.T) {
+		tmpDir := t.TempDir()
+		resultsPath := filepath.Join(tmpDir, "results.json")
 
-	sampleResults := `{
-		"descriptor": {
-			"version": "0.32.0",
-			"configuration": {
-				"db": {
-					"update-url": "https://toolbox-data.anchore.io/grype/databases/listing.json"
-				}
+		testData := []byte(`{
+			"bomFormat": "CycloneDX",
+			"specVersion": "1.5",
+			"version": 1,
+			"metadata": {
+				"timestamp": "2024-03-14T12:00:00Z",
+				"tools": [
+					{
+						"vendor": "anchore",
+						"name": "grype",
+						"version": "0.74.7"
+					}
+				]
 			},
-			"db": {
-				"schemaVersion": "5",
-				"built": "2024-01-06T14:00:00Z"
-			},
-			"timestamp": "2024-01-06T15:00:00Z"
-		},
-		"matches": [
-			{
-				"vulnerability": {
-					"id": "CVE-2023-1234",
-					"severity": "HIGH",
-					"cvss": [
+			"vulnerabilities": [
+				{
+					"id": "CVE-2024-1234",
+					"source": {
+						"name": "nvd",
+						"url": "https://nvd.nist.gov"
+					},
+					"ratings": [
 						{
-							"metrics": {
-								"baseScore": 8.5
-							}
+							"source": {
+								"name": "nvd"
+							},
+							"score": 7.5,
+							"severity": "HIGH",
+							"method": "CVSSv3"
 						}
 					]
 				}
-			}
-		]
-	}`
+			]
+		}`)
 
-	err := os.WriteFile(resultsPath, []byte(sampleResults), 0600)
-	require.NoError(t, err)
+		err := os.WriteFile(resultsPath, testData, 0600)
+		require.NoError(t, err)
 
-	t.Run("generates valid dependency scan", func(t *testing.T) {
-		var buf bytes.Buffer
 		cmd := NewCommand()
-		cmd.SetOut(&buf)
-		cmd.SetErr(&buf)
+		var output bytes.Buffer
+		cmd.SetOut(&output)
 
 		cmd.SetArgs([]string{
 			"--results-path", resultsPath,
+			"--subject-name", "test-subject",
+			"--digest", "sha256:abc123",
 		})
 
-		err := cmd.Execute()
-		assert.NoError(t, err)
-
-		output := buf.String()
-		assert.NotEmpty(t, output)
+		err = cmd.Execute()
+		require.NoError(t, err)
 
 		var result map[string]interface{}
-		err = json.Unmarshal([]byte(output), &result)
-		assert.NoError(t, err)
+		err = json.Unmarshal(output.Bytes(), &result)
+		require.NoError(t, err)
 
-		assert.Contains(t, result, "scanner")
-		assert.Contains(t, result, "metadata")
+		predicate := result["predicate"].(map[string]interface{})
+		scanner := predicate["scanner"].(map[string]interface{})
 
-		scanner := result["scanner"].(map[string]interface{})
-		assert.Equal(t, "0.32.0", scanner["version"])
-		assert.Contains(t, scanner, "result")
-	})
+		assert.Equal(t, "https://github.com/anchore/grype/releases/tag/v0.74.7", scanner["uri"])
+		assert.Equal(t, "0.74.7", scanner["version"])
 
-	t.Run("requires results-path flag", func(t *testing.T) {
-		cmd := NewCommand()
-		err := cmd.Execute()
-		assert.Error(t, err)
-		assert.Contains(t, err.Error(), "required flag")
+		db := scanner["db"].(map[string]interface{})
+		assert.Equal(t, "grype", db["name"])
+		assert.Equal(t, "1.5", db["version"])
+		assert.Equal(t, "2024-03-14T12:00:00Z", db["lastUpdated"])
+
+		results := scanner["result"].([]interface{})
+		require.Len(t, results, 1)
+
+		vuln := results[0].(map[string]interface{})
+		assert.Equal(t, "CVE-2024-1234", vuln["id"])
+
+		severity := vuln["severity"].(map[string]interface{})
+		assert.Equal(t, "CVSSv3", severity["method"])
+		assert.Equal(t, "7.5", severity["score"])
 	})
 }

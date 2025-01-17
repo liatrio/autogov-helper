@@ -3,6 +3,7 @@ package metadata
 import (
 	"fmt"
 	"os"
+	"time"
 
 	"gh-attest-util/internal/attestation/metadata"
 	"gh-attest-util/internal/github"
@@ -12,7 +13,6 @@ import (
 
 func NewCommand() *cobra.Command {
 	var opts metadata.Options
-	var controlIds string
 	var outputFile string
 	var buildType string
 
@@ -22,63 +22,83 @@ func NewCommand() *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx, err := github.LoadFromEnv()
 			if err != nil {
-				return fmt.Errorf("failed to load GitHub context: %w", err)
+				return fmt.Errorf("failed to get GitHub context: %w", err)
 			}
 
-			// use env vars if flags are not set
-			if opts.SubjectName == "" {
-				if subjectName, ok := ctx.Inputs["subject-name"].(string); ok {
-					opts.SubjectName = subjectName
+			now := time.Now().UTC()
+			shortSHA := ctx.SHA
+			if len(ctx.SHA) >= 7 {
+				shortSHA = ctx.SHA[:7]
+			}
+
+			opts.Version = fmt.Sprintf("%s-%s", shortSHA, ctx.RunNumber)
+			opts.Created = now
+			opts.Type = buildType
+			opts.Repository = ctx.Repository
+			opts.RepositoryID = ctx.RepositoryID
+			opts.GitHubServerURL = ctx.ServerURL
+			opts.Owner = ctx.RepositoryOwner
+			opts.OwnerID = ctx.RepositoryOwnerID
+			opts.OS = ctx.Runner.OS
+			opts.Arch = ctx.Runner.Arch
+			opts.Environment = ctx.Runner.Environment
+			opts.WorkflowRefPath = ctx.WorkflowRef
+			opts.Inputs = ctx.Inputs
+			opts.Branch = ctx.RefName
+			opts.Event = ctx.EventName
+			opts.RunNumber = ctx.RunNumber
+			opts.RunID = ctx.RunID
+			opts.Status = "success"
+			opts.TriggeredBy = ctx.Actor
+			opts.Organization = ctx.RepositoryOwner
+			opts.SHA = ctx.SHA
+			opts.Permissions = map[string]string{
+				"id-token":     "write",
+				"attestations": "write",
+				"packages":     "write",
+				"contents":     "read",
+			}
+
+			if startTime, err := time.Parse(time.RFC3339, ctx.Event.WorkflowRun.CreatedAt); err == nil {
+				opts.StartedAt = startTime
+			}
+			opts.CompletedAt = now
+
+			if commitTime, err := time.Parse(time.RFC3339, ctx.Event.HeadCommit.Timestamp); err == nil {
+				opts.Timestamp = commitTime
+			}
+
+			if opts.PolicyRef == "" {
+				opts.PolicyRef = "https://github.com/liatrio/demo-gh-autogov-policy-library"
+			}
+
+			if len(opts.ControlIds) == 0 {
+				opts.ControlIds = []string{
+					fmt.Sprintf("%s-PROVENANCE-001", ctx.RepositoryOwner),
+					fmt.Sprintf("%s-SBOM-002", ctx.RepositoryOwner),
+					fmt.Sprintf("%s-METADATA-003", ctx.RepositoryOwner),
 				}
 			}
 
-			if opts.Registry == "" {
-				if registry, ok := ctx.Inputs["registry"].(string); ok {
-					opts.Registry = registry
-				} else if buildType == "blob" {
-					opts.Registry = "local" // default for blobs
-				}
-			}
-
-			// for blobs, get subject-path from inputs if not set
-			if buildType == "blob" && opts.SubjectPath == "" {
-				if subjectPath, ok := ctx.Inputs["subject-path"].(string); ok {
-					opts.SubjectPath = subjectPath
-				}
-			}
-
-			// validate required values based on build type
-			if opts.SubjectName == "" {
-				return fmt.Errorf("subject-name is required (either as flag or in environment)")
-			}
-
-			if buildType == "image" {
-				if opts.Digest == "" {
-					return fmt.Errorf("digest is required for image type (must be provided via --digest flag)")
-				}
-				if opts.Registry == "" {
-					return fmt.Errorf("registry is required for image type (either as flag or in environment)")
-				}
-			} else if buildType == "blob" {
+			if buildType == "blob" {
 				if opts.SubjectPath == "" {
-					return fmt.Errorf("subject-path is required for blob type (either as flag or in environment)")
+					return fmt.Errorf("subject-path is required for blob type")
 				}
-			} else {
-				return fmt.Errorf("build-type must be either 'image' or 'blob'")
+				subjectPath := opts.SubjectPath
+				if _, err := os.Stat(subjectPath); err != nil {
+					return fmt.Errorf("failed to read subject file: %w", err)
+				}
+				opts.SubjectPath = subjectPath
 			}
 
-			if controlIds != "" {
-				opts.ControlIds = append(opts.ControlIds, controlIds)
-			}
-
-			m, err := metadata.NewFromGitHubContext(ctx, opts)
+			m, err := metadata.NewFromOptions(opts)
 			if err != nil {
-				return fmt.Errorf("failed to create metadata: %w", err)
+				return fmt.Errorf("failed to generate metadata: %w", err)
 			}
 
 			output, err := m.Generate()
 			if err != nil {
-				return fmt.Errorf("failed to generate metadata: %w", err)
+				return fmt.Errorf("failed to generate predicate: %w", err)
 			}
 
 			if outputFile != "" {
@@ -96,14 +116,16 @@ func NewCommand() *cobra.Command {
 	}
 
 	flags := cmd.Flags()
-	flags.StringVar(&opts.SubjectName, "subject-name", "", "Name of the subject being attested")
-	flags.StringVar(&opts.Digest, "digest", "", "Digest of the subject (required for image type)")
-	flags.StringVar(&opts.Registry, "registry", "", "Registry containing the subject (optional if set in environment)")
+	flags.StringVar(&opts.SubjectName, "subject-name", "", "Name of the subject")
+	flags.StringVar(&opts.Digest, "digest", "", "Digest of the subject")
+	flags.StringVar(&opts.Registry, "registry", "", "Registry where the subject is stored")
+	flags.StringVar(&opts.PolicyRef, "policy-ref", "", "Reference to the policy being enforced")
+	flags.StringSliceVar(&opts.ControlIds, "control-ids", nil, "Control IDs being enforced")
 	flags.StringVar(&opts.SubjectPath, "subject-path", "", "Path to the subject (required for blob type)")
-	flags.StringVar(&opts.PolicyRef, "policy-ref", "", "Reference to the policy being applied")
-	flags.StringVar(&controlIds, "control-ids", "", "Comma-separated list of control IDs")
+	flags.StringVar(&buildType, "type", "container-image", "Type of build (container-image or blob)")
 	flags.StringVar(&outputFile, "output", "", "Output file path (defaults to stdout)")
-	flags.StringVar(&buildType, "build-type", "image", "Type of build (image or blob)")
+	cobra.CheckErr(cmd.MarkFlagRequired("subject-name"))
+	cobra.CheckErr(cmd.MarkFlagRequired("digest"))
 
 	return cmd
 }

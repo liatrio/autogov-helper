@@ -5,75 +5,102 @@ import (
 	"testing"
 	"time"
 
-	"gh-attest-util/internal/github"
-
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
-func TestNewFromGitHubContext(t *testing.T) {
-	ctx := &github.Context{
-		Repository:        "test-repo",
-		RepositoryOwner:   "test-owner",
-		RepositoryID:      "123",
-		ServerURL:         "https://github.com",
-		RepositoryOwnerID: "456",
-		WorkflowRef:       "main",
-		RefName:           "main",
-		EventName:         "push",
-		SHA:               "abc1234567",
-		RunNumber:         "1",
-		RunID:             "789",
-		Actor:             "test-user",
-		Runner: &github.Runner{
-			OS:          "Linux",
-			Arch:        "X64",
-			Environment: "github-hosted",
-		},
-	}
-	ctx.Event.WorkflowRun.CreatedAt = "2024-03-14T12:00:00Z"
-	ctx.Event.HeadCommit.Timestamp = "2024-03-14T12:00:00Z"
+func TestNewFromOptions(t *testing.T) {
+	now := time.Now().UTC()
 
 	opts := Options{
-		SubjectName: "test-image",
-		Digest:      "sha256:123",
-		Registry:    "ghcr.io",
-		JobStatus:   "success",
-		PolicyRef:   "https://example.com/policy",
-		ControlIds:  []string{"TEST-001", "TEST-002"},
+		SubjectName:     "test-subject",
+		Digest:          "sha256:abc123",
+		Version:         "v1.0.0",
+		Created:         now,
+		Type:            "container-image",
+		Registry:        "ghcr.io",
+		FullName:        "test-subject:v1.0.0",
+		Repository:      "owner/repo",
+		RepositoryID:    "12345",
+		GitHubServerURL: "https://github.com",
+		Owner:           "owner",
+		OwnerID:         "67890",
+		OS:              "linux",
+		Arch:            "amd64",
+		Environment:     "github-hosted",
+		WorkflowRefPath: ".github/workflows/build.yml",
+		Inputs:          map[string]any{"foo": "bar"},
+		Branch:          "main",
+		Event:           "push",
+		RunNumber:       "1",
+		RunID:           "123456789",
+		Status:          "success",
+		TriggeredBy:     "user",
+		StartedAt:       now.Add(-time.Hour),
+		CompletedAt:     now,
+		SHA:             "abcdef123456",
+		Timestamp:       now.Add(-time.Hour),
+		Organization:    "owner",
+		PolicyRef:       "https://github.com/owner/policy",
+		ControlIds:      []string{"CONTROL-001"},
+		Permissions:     map[string]string{"id-token": "write"},
 	}
 
-	t.Run("generates valid metadata", func(t *testing.T) {
-		m, err := NewFromGitHubContext(ctx, opts)
-		assert.NoError(t, err)
+	m, err := NewFromOptions(opts)
+	require.NoError(t, err)
 
-		data, err := m.Generate()
-		assert.NoError(t, err)
+	assert.Equal(t, PredicateTypeURI, m.Type())
+	assert.Equal(t, "test-subject", m.Subject[0].Name)
+	assert.Equal(t, "sha256:abc123", m.Subject[0].Digest.SHA256)
 
-		var result map[string]interface{}
-		err = json.Unmarshal(data, &result)
-		assert.NoError(t, err)
+	assert.Equal(t, "v1.0.0", m.Predicate.Artifact.Version)
+	assert.Equal(t, now, m.Predicate.Artifact.Created)
+	assert.Equal(t, "container-image", m.Predicate.Artifact.Type)
+	assert.Equal(t, "ghcr.io", m.Predicate.Artifact.Registry)
+	assert.Equal(t, "test-subject:v1.0.0", m.Predicate.Artifact.FullName)
+	assert.Equal(t, "sha256:abc123", m.Predicate.Artifact.Digest)
 
-		assert.Contains(t, result, "artifact")
-		assert.Contains(t, result, "repositoryData")
-		assert.Contains(t, result, "ownerData")
-		assert.Contains(t, result, "runnerData")
-		assert.Contains(t, result, "workflowData")
-		assert.Contains(t, result, "jobData")
-		assert.Contains(t, result, "commitData")
-		assert.Contains(t, result, "organization")
-		assert.Contains(t, result, "compliance")
-		assert.Contains(t, result, "security")
+	assert.Equal(t, "owner/repo", m.Predicate.RepositoryData.Repository)
+	assert.Equal(t, "12345", m.Predicate.RepositoryData.RepositoryID)
+	assert.Equal(t, "https://github.com", m.Predicate.RepositoryData.GitHubServerURL)
 
-		artifact := result["artifact"].(map[string]interface{})
-		assert.Equal(t, "abc1234-1", artifact["version"])
-		assert.Equal(t, "sha256:123", artifact["digest"])
-		assert.Equal(t, "container-image", artifact["type"])
-		assert.Equal(t, "ghcr.io", artifact["registry"])
-		assert.Equal(t, "test-image", artifact["fullName"])
+	assert.Equal(t, "owner", m.Predicate.OwnerData.Owner)
+	assert.Equal(t, "67890", m.Predicate.OwnerData.OwnerID)
 
-		_, err = time.Parse(time.RFC3339, artifact["created"].(string))
-		assert.NoError(t, err)
-	})
+	assert.Equal(t, "linux", m.Predicate.RunnerData.OS)
+	assert.Equal(t, "amd64", m.Predicate.RunnerData.Arch)
+	assert.Equal(t, "github-hosted", m.Predicate.RunnerData.Environment)
+
+	assert.Equal(t, ".github/workflows/build.yml", m.Predicate.WorkflowData.WorkflowRefPath)
+	assert.Equal(t, map[string]any{"foo": "bar"}, m.Predicate.WorkflowData.Inputs)
+	assert.Equal(t, "main", m.Predicate.WorkflowData.Branch)
+	assert.Equal(t, "push", m.Predicate.WorkflowData.Event)
+
+	assert.Equal(t, "1", m.Predicate.JobData.RunNumber)
+	assert.Equal(t, "123456789", m.Predicate.JobData.RunID)
+	assert.Equal(t, "success", m.Predicate.JobData.Status)
+	assert.Equal(t, "user", m.Predicate.JobData.TriggeredBy)
+	assert.Equal(t, now.Add(-time.Hour), m.Predicate.JobData.StartedAt)
+	assert.Equal(t, now, m.Predicate.JobData.CompletedAt)
+
+	assert.Equal(t, "abcdef123456", m.Predicate.CommitData.SHA)
+	assert.Equal(t, now.Add(-time.Hour), m.Predicate.CommitData.Timestamp)
+
+	assert.Equal(t, "owner", m.Predicate.Organization.Name)
+
+	assert.Equal(t, "https://github.com/owner/policy", m.Predicate.Compliance.PolicyRef)
+	assert.Equal(t, []string{"CONTROL-001"}, m.Predicate.Compliance.ControlIds)
+
+	assert.Equal(t, map[string]string{"id-token": "write"}, m.Predicate.Security.Permissions)
+
+	data, err := m.Generate()
+	require.NoError(t, err)
+
+	var jsonMap map[string]interface{}
+	err = json.Unmarshal(data, &jsonMap)
+	require.NoError(t, err)
+
+	assert.Equal(t, PredicateTypeURI, jsonMap["predicateType"])
 }
 
 func TestMetadataType(t *testing.T) {

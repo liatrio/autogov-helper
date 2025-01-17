@@ -4,35 +4,22 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"time"
+
+	"github.com/CycloneDX/cyclonedx-go"
+	"github.com/liatrio/demo-gh-autogov-policy-library/schemas"
 )
 
 const PredicateTypeURI = "https://in-toto.io/attestation/vulns/v0.2"
 
 type DependencyScan struct {
-	Scanner struct {
-		URI     string `json:"uri"`
-		Version string `json:"version"`
-		DB      struct {
-			URI        string `json:"uri"`
-			Version    string `json:"version"`
-			LastUpdate string `json:"lastUpdate"`
-		} `json:"db"`
-		Result []Vulnerability `json:"result"`
-	} `json:"scanner"`
-	Metadata struct {
-		ScanStartedOn  string `json:"scanStartedOn"`
-		ScanFinishedOn string `json:"scanFinishedOn"`
-	} `json:"metadata"`
+	schemas.DependencyVulnerability
 }
 
-type Vulnerability struct {
-	ID       string     `json:"id"`
-	Severity []Severity `json:"severity"`
-}
-
-type Severity struct {
-	Method string `json:"method"`
-	Score  string `json:"score"`
+type Options struct {
+	ResultsPath string
+	SubjectName string
+	Digest      string
 }
 
 func (d *DependencyScan) Type() string {
@@ -43,79 +30,80 @@ func (d *DependencyScan) Generate() ([]byte, error) {
 	return json.MarshalIndent(d, "", "  ")
 }
 
-type Options struct {
-	ResultsPath string
-}
-
-type GrypeResults struct {
-	Descriptor struct {
-		Version       string `json:"version"`
-		Configuration struct {
-			DB struct {
-				UpdateURL string `json:"update-url"`
-			} `json:"db"`
-		} `json:"configuration"`
-		DB struct {
-			SchemaVersion string `json:"schemaVersion"`
-			Built         string `json:"built"`
-		} `json:"db"`
-		Timestamp string `json:"timestamp"`
-	} `json:"descriptor"`
-	Matches []struct {
-		Vulnerability struct {
-			ID       string `json:"id"`
-			Severity string `json:"severity"`
-			CVSS     []struct {
-				Metrics struct {
-					BaseScore float64 `json:"baseScore"`
-				} `json:"metrics"`
-			} `json:"cvss"`
-		} `json:"vulnerability"`
-	} `json:"matches"`
-}
-
-// creates a new DependencyScan from Grype results
 func NewFromGrypeResults(opts Options) (*DependencyScan, error) {
 	resultsData, err := os.ReadFile(opts.ResultsPath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read results file: %w", err)
 	}
 
-	var grypeResults GrypeResults
+	var grypeResults cyclonedx.BOM
 	if err := json.Unmarshal(resultsData, &grypeResults); err != nil {
 		return nil, fmt.Errorf("failed to parse results: %w", err)
 	}
 
-	scan := &DependencyScan{}
-
-	scan.Scanner.URI = fmt.Sprintf("https://github.com/anchore/grype/releases/tag/v%s", grypeResults.Descriptor.Version)
-	scan.Scanner.Version = grypeResults.Descriptor.Version
-	scan.Scanner.DB.URI = grypeResults.Descriptor.Configuration.DB.UpdateURL
-	scan.Scanner.DB.Version = grypeResults.Descriptor.DB.SchemaVersion
-	scan.Scanner.DB.LastUpdate = grypeResults.Descriptor.DB.Built
-
-	scan.Metadata.ScanStartedOn = grypeResults.Descriptor.DB.Built
-	scan.Metadata.ScanFinishedOn = grypeResults.Descriptor.Timestamp
-
-	for _, match := range grypeResults.Matches {
-		vuln := Vulnerability{
-			ID: match.Vulnerability.ID,
-			Severity: []Severity{
+	scan := &DependencyScan{
+		DependencyVulnerability: schemas.DependencyVulnerability{
+			Type:          "https://in-toto.io/Statement/v1",
+			PredicateType: PredicateTypeURI,
+			Subject: []schemas.Subject{
 				{
-					Method: "nvd",
-					Score:  match.Vulnerability.Severity,
+					Name: opts.SubjectName,
+					Digest: struct {
+						SHA256 string `json:"sha256"`
+					}{
+						SHA256: opts.Digest,
+					},
 				},
 			},
-		}
+		},
+	}
 
-		if len(match.Vulnerability.CVSS) > 0 {
-			vuln.Severity = append(vuln.Severity, Severity{
-				Method: "cvss_score",
-				Score:  fmt.Sprintf("%.1f", match.Vulnerability.CVSS[0].Metrics.BaseScore),
-			})
+	if grypeResults.Metadata != nil && grypeResults.Metadata.Tools != nil {
+		tools := grypeResults.Metadata.Tools.Tools
+		if tools != nil && len(*tools) > 0 {
+			toolList := *tools
+			tool := toolList[0]
+			scan.Predicate.Scanner.URI = fmt.Sprintf("https://github.com/%s/%s/releases/tag/v%s", tool.Vendor, tool.Name, tool.Version)
+			scan.Predicate.Scanner.Version = tool.Version
 		}
+	}
 
-		scan.Scanner.Result = append(scan.Scanner.Result, vuln)
+	scan.Predicate.Scanner.DB.Name = "grype"
+	scan.Predicate.Scanner.DB.Version = grypeResults.SpecVersion.String()
+	if grypeResults.Metadata != nil {
+		if t, err := time.Parse(time.RFC3339, grypeResults.Metadata.Timestamp); err == nil {
+			scan.Predicate.Scanner.DB.LastUpdated = t.Format(time.RFC3339)
+		}
+	}
+
+	if grypeResults.Vulnerabilities != nil {
+		for _, vuln := range *grypeResults.Vulnerabilities {
+			result := struct {
+				ID       string `json:"id"`
+				Severity struct {
+					Method string `json:"method"`
+					Score  string `json:"score"`
+				} `json:"severity"`
+			}{
+				ID: vuln.ID,
+			}
+
+			if vuln.Ratings != nil && len(*vuln.Ratings) > 0 {
+				ratings := *vuln.Ratings
+				rating := ratings[0]
+				result.Severity.Method = string(rating.Method)
+				if rating.Score != nil {
+					result.Severity.Score = fmt.Sprintf("%.1f", *rating.Score)
+				} else {
+					result.Severity.Score = string(rating.Severity)
+				}
+			} else if vuln.Source != nil {
+				result.Severity.Method = vuln.Source.Name
+				result.Severity.Score = "UNKNOWN"
+			}
+
+			scan.Predicate.Scanner.Result = append(scan.Predicate.Scanner.Result, result)
+		}
 	}
 
 	return scan, nil

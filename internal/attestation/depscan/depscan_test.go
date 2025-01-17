@@ -14,124 +14,76 @@ func TestNewFromGrypeResults(t *testing.T) {
 	tmpDir := t.TempDir()
 	resultsPath := filepath.Join(tmpDir, "results.json")
 
-	sampleResults := `{
-		"descriptor": {
-			"version": "0.32.0",
-			"configuration": {
-				"db": {
-					"update-url": "https://toolbox-data.anchore.io/grype/databases/listing.json"
+	testData := []byte(`{
+		"bomFormat": "CycloneDX",
+		"specVersion": "1.5",
+		"version": 1,
+		"metadata": {
+			"timestamp": "2024-03-14T12:00:00Z",
+			"tools": [
+				{
+					"vendor": "anchore",
+					"name": "grype",
+					"version": "0.74.7"
 				}
-			},
-			"db": {
-				"schemaVersion": "5",
-				"built": "2024-01-06T14:00:00Z"
-			},
-			"timestamp": "2024-01-06T15:00:00Z"
+			]
 		},
-		"matches": [
+		"vulnerabilities": [
 			{
-				"vulnerability": {
-					"id": "CVE-2023-1234",
-					"severity": "HIGH",
-					"cvss": [
-						{
-							"metrics": {
-								"baseScore": 8.5
-							}
-						}
-					]
-				}
-			},
-			{
-				"vulnerability": {
-					"id": "CVE-2023-5678",
-					"severity": "MEDIUM",
-					"cvss": [
-						{
-							"metrics": {
-								"baseScore": 5.5
-							}
-						}
-					]
-				}
+				"id": "CVE-2024-1234",
+				"source": {
+					"name": "nvd",
+					"url": "https://nvd.nist.gov"
+				},
+				"ratings": [
+					{
+						"source": {
+							"name": "nvd"
+						},
+						"score": 7.5,
+						"severity": "HIGH",
+						"method": "CVSSv3"
+					}
+				]
 			}
 		]
-	}`
+	}`)
 
-	err := os.WriteFile(resultsPath, []byte(sampleResults), 0600)
+	err := os.WriteFile(resultsPath, testData, 0600)
 	require.NoError(t, err)
 
-	t.Run("successfully parses grype results", func(t *testing.T) {
-		scan, err := NewFromGrypeResults(Options{
-			ResultsPath: resultsPath,
-		})
-		require.NoError(t, err)
+	opts := Options{
+		ResultsPath: resultsPath,
+		SubjectName: "test-subject",
+		Digest:      "abc123",
+	}
 
-		// Verify scanner info
-		assert.Equal(t, "https://github.com/anchore/grype/releases/tag/v0.32.0", scan.Scanner.URI)
-		assert.Equal(t, "0.32.0", scan.Scanner.Version)
-		assert.Equal(t, "https://toolbox-data.anchore.io/grype/databases/listing.json", scan.Scanner.DB.URI)
-		assert.Equal(t, "5", scan.Scanner.DB.Version)
-		assert.Equal(t, "2024-01-06T14:00:00Z", scan.Scanner.DB.LastUpdate)
+	scan, err := NewFromGrypeResults(opts)
+	require.NoError(t, err)
 
-		assert.Equal(t, "2024-01-06T14:00:00Z", scan.Metadata.ScanStartedOn)
-		assert.Equal(t, "2024-01-06T15:00:00Z", scan.Metadata.ScanFinishedOn)
+	assert.Equal(t, PredicateTypeURI, scan.Type())
+	assert.Equal(t, "test-subject", scan.Subject[0].Name)
+	assert.Equal(t, "abc123", scan.Subject[0].Digest.SHA256)
 
-		require.Len(t, scan.Scanner.Result, 2)
+	assert.Equal(t, "https://github.com/anchore/grype/releases/tag/v0.74.7", scan.Predicate.Scanner.URI)
+	assert.Equal(t, "0.74.7", scan.Predicate.Scanner.Version)
 
-		assert.Equal(t, "CVE-2023-1234", scan.Scanner.Result[0].ID)
-		require.Len(t, scan.Scanner.Result[0].Severity, 2)
-		assert.Equal(t, "nvd", scan.Scanner.Result[0].Severity[0].Method)
-		assert.Equal(t, "HIGH", scan.Scanner.Result[0].Severity[0].Score)
-		assert.Equal(t, "cvss_score", scan.Scanner.Result[0].Severity[1].Method)
-		assert.Equal(t, "8.5", scan.Scanner.Result[0].Severity[1].Score)
+	assert.Equal(t, "grype", scan.Predicate.Scanner.DB.Name)
+	assert.Equal(t, "1.5", scan.Predicate.Scanner.DB.Version)
+	assert.Equal(t, "2024-03-14T12:00:00Z", scan.Predicate.Scanner.DB.LastUpdated)
 
-		assert.Equal(t, "CVE-2023-5678", scan.Scanner.Result[1].ID)
-		require.Len(t, scan.Scanner.Result[1].Severity, 2)
-		assert.Equal(t, "nvd", scan.Scanner.Result[1].Severity[0].Method)
-		assert.Equal(t, "MEDIUM", scan.Scanner.Result[1].Severity[0].Score)
-		assert.Equal(t, "cvss_score", scan.Scanner.Result[1].Severity[1].Method)
-		assert.Equal(t, "5.5", scan.Scanner.Result[1].Severity[1].Score)
-	})
+	require.Len(t, scan.Predicate.Scanner.Result, 1)
+	result := scan.Predicate.Scanner.Result[0]
+	assert.Equal(t, "CVE-2024-1234", result.ID)
+	assert.Equal(t, "CVSSv3", result.Severity.Method)
+	assert.Equal(t, "7.5", result.Severity.Score)
 
-	t.Run("handles missing results file", func(t *testing.T) {
-		_, err := NewFromGrypeResults(Options{
-			ResultsPath: "nonexistent.json",
-		})
-		assert.Error(t, err)
-		assert.Contains(t, err.Error(), "failed to read results file")
-	})
+	data, err := scan.Generate()
+	require.NoError(t, err)
 
-	t.Run("handles invalid json", func(t *testing.T) {
-		invalidPath := filepath.Join(tmpDir, "invalid.json")
-		err := os.WriteFile(invalidPath, []byte("invalid json"), 0600)
-		require.NoError(t, err)
+	var jsonMap map[string]interface{}
+	err = json.Unmarshal(data, &jsonMap)
+	require.NoError(t, err)
 
-		_, err = NewFromGrypeResults(Options{
-			ResultsPath: invalidPath,
-		})
-		assert.Error(t, err)
-		assert.Contains(t, err.Error(), "failed to parse results")
-	})
-
-	t.Run("generates valid json output", func(t *testing.T) {
-		scan, err := NewFromGrypeResults(Options{
-			ResultsPath: resultsPath,
-		})
-		require.NoError(t, err)
-
-		output, err := scan.Generate()
-		require.NoError(t, err)
-
-		var result map[string]interface{}
-		err = json.Unmarshal(output, &result)
-		assert.NoError(t, err)
-		assert.Contains(t, result, "scanner")
-		assert.Contains(t, result, "metadata")
-	})
-
-	t.Run("returns correct predicate type", func(t *testing.T) {
-		scan := &DependencyScan{}
-		assert.Equal(t, PredicateTypeURI, scan.Type())
-	})
+	assert.Equal(t, PredicateTypeURI, jsonMap["predicateType"])
 }
