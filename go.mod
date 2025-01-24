@@ -9,7 +9,7 @@ require (
 	github.com/stretchr/testify v1.10.0
 )
 
-replace github.com/liatrio/demo-gh-autogov-policy-library => /Users/ianhundere/Projects/autogov/demo-gh-autogov-policy-library
+replace github.com/liatrio/demo-gh-autogov-policy-library => ../demo-gh-autogov-policy-library
 
 require (
 	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc // indirect
