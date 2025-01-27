@@ -3,6 +3,7 @@ package metadata
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 	"time"
 
 	"gh-attest-util/internal/attestation/metadata"
@@ -88,6 +89,12 @@ func NewCommand() *cobra.Command {
 					return fmt.Errorf("failed to read subject file: %w", err)
 				}
 				opts.SubjectPath = subjectPath
+				// If subject-name is not provided for blobs, use the filename
+				if opts.SubjectName == "" {
+					opts.SubjectName = filepath.Base(subjectPath)
+				}
+			} else if opts.SubjectName == "" {
+				return fmt.Errorf("subject-name is required for container-image type")
 			}
 
 			m, err := metadata.NewFromOptions(opts)
@@ -115,13 +122,19 @@ func NewCommand() *cobra.Command {
 	}
 
 	flags := cmd.Flags()
-	flags.StringVar(&opts.SubjectName, "subject-name", "", "Name of the subject")
+	flags.StringVar(&opts.SubjectName, "subject-name", "", "Name of the subject (required for container-image type, defaults to filename for blob type)")
 	flags.StringVar(&opts.Digest, "digest", "", "Digest of the subject")
 	flags.StringVar(&opts.SubjectPath, "subject-path", "", "Path to the subject (required for blob type)")
 	flags.StringVar(&buildType, "type", "container-image", "Type of build (container-image or blob)")
 	flags.StringVar(&outputFile, "output", "", "Output file path (defaults to stdout)")
-	cobra.CheckErr(cmd.MarkFlagRequired("subject-name"))
 	cobra.CheckErr(cmd.MarkFlagRequired("digest"))
+
+	cmd.PreRunE = func(cmd *cobra.Command, args []string) error {
+		if buildType == "blob" && opts.SubjectPath == "" {
+			return fmt.Errorf("subject-path is required for blob type")
+		}
+		return nil
+	}
 
 	return cmd
 }

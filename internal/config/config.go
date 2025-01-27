@@ -21,7 +21,7 @@ func Load() (*Config, error) {
 		PolicyRepo: PolicyRepo{
 			Owner: getEnvOrDefault("POLICY_REPO_OWNER", "liatrio"),
 			Name:  getEnvOrDefault("POLICY_REPO_NAME", "demo-gh-autogov-policy-library"),
-			Ref:   os.Getenv("POLICY_VERSION"),
+			Ref:   getEnvOrDefault("POLICY_VERSION", "v0.8.0"),
 		},
 		SchemasPath: getEnvOrDefault("SCHEMAS_PATH", "schemas/"),
 	}

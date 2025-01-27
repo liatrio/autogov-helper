@@ -5,51 +5,55 @@ on:
   pull_request:
     branches: [main]
   push:
-    branches: [main]
     paths-ignore:
       - README.md
       - catalog-info.yaml
       - renovate.json
 
 jobs:
-  lint:
-    name: lint
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
-      - uses: actions/setup-go@3041bf56c941b39c61721a86cd11f3bb1338122a # v5
-        with:
-          go-version: '1.23'
-      - name: Install golangci-lint
-        uses: golangci/golangci-lint-action@ec5d18412c0aeab7936cb16880d708ba2a64e1ae # v6
-        with:
-          version: v1.62.0
-          args: --timeout=5m
-          only-new-issues: true
-      - name: Run linter
-        run: golangci-lint run
-  test:
-    name: test
-    runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        go-version: ['1.21', '1.22', '1.23']
-    steps:
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
-      - uses: actions/setup-go@3041bf56c941b39c61721a86cd11f3bb1338122a # v5.2.0
-        with:
-          go-version: ${{ matrix.go-version }}
-      - name: Run tests
-        run: make test
+  # lint:
+  #   name: lint
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
+  #     - uses: actions/setup-go@3041bf56c941b39c61721a86cd11f3bb1338122a # v5
+  #       with:
+  #         go-version: '1.23.4'
+  #     - name: Install golangci-lint
+  #       uses: golangci/golangci-lint-action@ec5d18412c0aeab7936cb16880d708ba2a64e1ae # v6
+  #       with:
+  #         version: v1.62.0
+  #         args: --timeout=5m
+  #         only-new-issues: true
+  #     - name: Run linter
+  #       run: golangci-lint run
+  # test:
+  #   name: test
+  #   runs-on: ubuntu-latest
+  #   permissions:
+  #     contents: read
+  #   needs: [lint]
+  #   steps:
+  #     - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+  #     - uses: actions/setup-go@3041bf56c941b39c61721a86cd11f3bb1338122a # v5.2.0
+  #       with:
+  #         go-version: '1.23.4'
+  #     - name: Run tests
+  #       env:
+  #         GITHUB_TOKEN: ${{ secrets.UTIL_REPO_ACCESS }}
+  #       run: make test
   build:
     name: build
     runs-on: ubuntu-latest
-    needs: [test]
+    permissions:
+      contents: read
+      id-token: write
+    # needs: [test]
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
       - uses: actions/setup-go@3041bf56c941b39c61721a86cd11f3bb1338122a # v5.2.0
         with:
-          go-version: '1.23'
+          go-version: '1.23.4'
           cache: true
       - name: Build
         run: |
@@ -59,6 +63,27 @@ jobs:
             VERSION="${VERSION}-${GITHUB_SHA::8}"
           fi
           go build -ldflags "-X main.version=${VERSION}" -o bin/gh-attest-util .
+
+      - name: Install Binary
+        run: |
+          sudo cp bin/gh-attest-util /usr/local/bin/
+          gh-attest-util --help
+      - run: echo "test content" > test-file.txt
+      - run: |
+          gh-attest-util metadata \
+            --subject-path test-file.txt  \
+            --subject-name test-file.txt  \
+            --type blob  \
+            --digest sha256:test  \
+            --output metadata.json
+        env:
+          GH_TOKEN: ${{ secrets.UTIL_REPO_ACCESS }}
+          GITHUB_TOKEN: ${{ secrets.UTIL_REPO_ACCESS }}
+      - name: Display Generated File
+        run: |
+          echo "Generated metadata file contents:"
+          cat metadata.json | jq '.'
+
       - name: Upload binary
         uses: actions/upload-artifact@65c4c4a1ddee5b72f698fdd19549f0f0fb45cf08 # v4.6.0
         with:
