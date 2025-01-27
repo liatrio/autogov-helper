@@ -127,8 +127,8 @@ func TestGenerateStructFields(t *testing.T) {
 	// verify special cases for permissions and inputs
 	assert.Contains(t, result, "Permissions map[string]string `json:\"permissions\"`")
 	assert.Contains(t, result, "Inputs map[string]interface{} `json:\"inputs\"`")
-	
+
 	// verify nested struct generation
 	assert.Contains(t, result, "Field1 string `json:\"field1\"`")
 	assert.Contains(t, result, "Field2 []string `json:\"field2\"`")
-} 
+}
