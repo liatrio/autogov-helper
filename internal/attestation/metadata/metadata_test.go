@@ -54,7 +54,7 @@ func TestNewFromOptions(t *testing.T) {
 	assert.Equal(t, "sha256:abc123", m.Subject[0].Digest.SHA256)
 
 	assert.Equal(t, "v1.0.0", m.Predicate.Artifact.Version)
-	assert.Equal(t, now, m.Predicate.Artifact.Created)
+	assert.Equal(t, now.Format(time.RFC3339), m.Predicate.Artifact.Created)
 	assert.Equal(t, "container-image", m.Predicate.Artifact.Type)
 	assert.Equal(t, "ghcr.io", m.Predicate.Artifact.Registry)
 	assert.Equal(t, "test-subject:v1.0.0", m.Predicate.Artifact.FullName)
@@ -80,11 +80,11 @@ func TestNewFromOptions(t *testing.T) {
 	assert.Equal(t, "123456789", m.Predicate.JobData.RunID)
 	assert.Equal(t, "success", m.Predicate.JobData.Status)
 	assert.Equal(t, "user", m.Predicate.JobData.TriggeredBy)
-	assert.Equal(t, now.Add(-time.Hour), m.Predicate.JobData.StartedAt)
-	assert.Equal(t, now, m.Predicate.JobData.CompletedAt)
+	assert.Equal(t, now.Add(-time.Hour).Format(time.RFC3339), m.Predicate.JobData.StartedAt)
+	assert.Equal(t, now.Format(time.RFC3339), m.Predicate.JobData.CompletedAt)
 
 	assert.Equal(t, "abcdef123456", m.Predicate.CommitData.SHA)
-	assert.Equal(t, now.Add(-time.Hour), m.Predicate.CommitData.Timestamp)
+	assert.Equal(t, now.Add(-time.Hour).Format(time.RFC3339), m.Predicate.CommitData.Timestamp)
 
 	assert.Equal(t, "owner", m.Predicate.Organization.Name)
 

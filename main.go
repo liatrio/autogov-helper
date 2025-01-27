@@ -25,6 +25,7 @@ func newRootCmd() *cobra.Command {
 		Long:  "A utility for generating custom predicates for GitHub artifact attestations",
 	}
 
-	cmd.AddCommand(metadata.NewCommand(), depscan.NewCommand())
+	cmd.AddCommand(depscan.NewCommand())
+	cmd.AddCommand(metadata.NewCommand())
 	return cmd
 }

@@ -6,14 +6,15 @@ import (
 	"os"
 	"time"
 
+	"gh-attest-util/internal/attestation/schema/generated"
+
 	"github.com/CycloneDX/cyclonedx-go"
-	"github.com/liatrio/demo-gh-autogov-policy-library/schemas"
 )
 
 const PredicateTypeURI = "https://in-toto.io/attestation/vulns/v0.2"
 
 type DependencyScan struct {
-	schemas.DependencyVulnerability
+	generated.Dependencyscan
 }
 
 type Options struct {
@@ -42,10 +43,10 @@ func NewFromGrypeResults(opts Options) (*DependencyScan, error) {
 	}
 
 	scan := &DependencyScan{
-		DependencyVulnerability: schemas.DependencyVulnerability{
+		Dependencyscan: generated.Dependencyscan{
 			Type:          "https://in-toto.io/Statement/v1",
 			PredicateType: PredicateTypeURI,
-			Subject: []schemas.Subject{
+			Subject: []generated.Subject{
 				{
 					Name: opts.SubjectName,
 					Digest: struct {

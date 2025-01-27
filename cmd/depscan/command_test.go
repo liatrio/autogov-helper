@@ -1,4 +1,4 @@
-package depscan
+package depscan_test
 
 import (
 	"bytes"
@@ -6,6 +6,8 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+
+	"gh-attest-util/cmd/depscan"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -54,7 +56,7 @@ func TestDepscanCommand(t *testing.T) {
 		err := os.WriteFile(resultsPath, testData, 0600)
 		require.NoError(t, err)
 
-		cmd := NewCommand()
+		cmd := depscan.NewCommand()
 		var output bytes.Buffer
 		cmd.SetOut(&output)
 

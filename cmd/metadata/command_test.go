@@ -1,10 +1,12 @@
-package metadata
+package metadata_test
 
 import (
 	"bytes"
 	"encoding/json"
 	"os"
 	"testing"
+
+	"gh-attest-util/cmd/metadata"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -28,7 +30,7 @@ func TestMetadataCommand(t *testing.T) {
 		os.Setenv("RUNNER_ARCH", "X64")
 		os.Setenv("RUNNER_ENVIRONMENT", "github-hosted")
 
-		cmd := NewCommand()
+		cmd := metadata.NewCommand()
 		var output bytes.Buffer
 		cmd.SetOut(&output)
 

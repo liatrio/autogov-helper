@@ -4,15 +4,13 @@ import (
 	"encoding/json"
 	"time"
 
-	"gh-attest-util/internal/attestation/schema"
-
-	"github.com/liatrio/demo-gh-autogov-policy-library/schemas"
+	"gh-attest-util/internal/attestation/schema/generated"
 )
 
-const PredicateTypeURI = "https://liatr.io/attestations/metadata/v1"
+const PredicateTypeURI = "https://cosign.sigstore.dev/attestation/v1"
 
 type Metadata struct {
-	schema.Metadata
+	generated.Metadata
 }
 
 type Options struct {
@@ -60,10 +58,10 @@ func (m *Metadata) Generate() ([]byte, error) {
 
 func NewFromOptions(opts Options) (*Metadata, error) {
 	m := &Metadata{
-		Metadata: schema.Metadata{
+		Metadata: generated.Metadata{
 			Type:          "https://in-toto.io/Statement/v1",
 			PredicateType: PredicateTypeURI,
-			Subject: []schemas.Subject{
+			Subject: []generated.Subject{
 				{
 					Name: opts.SubjectName,
 					Digest: struct {
@@ -77,7 +75,7 @@ func NewFromOptions(opts Options) (*Metadata, error) {
 	}
 
 	m.Predicate.Artifact.Version = opts.Version
-	m.Predicate.Artifact.Created = opts.Created
+	m.Predicate.Artifact.Created = opts.Created.Format(time.RFC3339)
 	m.Predicate.Artifact.Type = opts.Type
 	m.Predicate.Artifact.Registry = opts.Registry
 	m.Predicate.Artifact.FullName = opts.FullName
@@ -103,11 +101,11 @@ func NewFromOptions(opts Options) (*Metadata, error) {
 	m.Predicate.JobData.RunID = opts.RunID
 	m.Predicate.JobData.Status = opts.Status
 	m.Predicate.JobData.TriggeredBy = opts.TriggeredBy
-	m.Predicate.JobData.StartedAt = opts.StartedAt
-	m.Predicate.JobData.CompletedAt = opts.CompletedAt
+	m.Predicate.JobData.StartedAt = opts.StartedAt.Format(time.RFC3339)
+	m.Predicate.JobData.CompletedAt = opts.CompletedAt.Format(time.RFC3339)
 
 	m.Predicate.CommitData.SHA = opts.SHA
-	m.Predicate.CommitData.Timestamp = opts.Timestamp
+	m.Predicate.CommitData.Timestamp = opts.Timestamp.Format(time.RFC3339)
 
 	m.Predicate.Organization.Name = opts.Organization
 

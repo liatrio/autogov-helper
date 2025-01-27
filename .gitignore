@@ -30,3 +30,9 @@ bin/
 .DS_Store
 
 *.code-workspace
+
+# Generated schema files
+internal/attestation/schema/*.schema.json
+internal/attestation/schema/*.schema.go
+internal/attestation/schema/common.go
+internal/attestation/schema/generated/
