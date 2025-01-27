@@ -68,9 +68,9 @@ func TestNewFromGrypeResults(t *testing.T) {
 	assert.Equal(t, "https://github.com/anchore/grype/releases/tag/v0.74.7", scan.Predicate.Scanner.URI)
 	assert.Equal(t, "0.74.7", scan.Predicate.Scanner.Version)
 
-	assert.Equal(t, "grype", scan.Predicate.Scanner.DB.Name)
-	assert.Equal(t, "1.5", scan.Predicate.Scanner.DB.Version)
-	assert.Equal(t, "2024-03-14T12:00:00Z", scan.Predicate.Scanner.DB.LastUpdated)
+	assert.Equal(t, "grype", scan.Predicate.Scanner.Db.Name)
+	assert.Equal(t, "1.5", scan.Predicate.Scanner.Db.Version)
+	assert.Equal(t, "2024-03-14T12:00:00Z", scan.Predicate.Scanner.Db.Lastupdated)
 
 	require.Len(t, scan.Predicate.Scanner.Result, 1)
 	result := scan.Predicate.Scanner.Result[0]

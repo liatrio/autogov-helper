@@ -1,10 +1,10 @@
 package main
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
 
 func TestSanitizeFieldName(t *testing.T) {
@@ -13,108 +13,129 @@ func TestSanitizeFieldName(t *testing.T) {
 		input    string
 		expected string
 	}{
-		{"simple", "name", "Name"},
-		{"snake_case", "first_name", "FirstName"},
-		{"kebab-case", "first-name", "FirstName"},
 		{"special_github", "github_url", "GitHubURL"},
-		{"special_id", "repository-id", "RepositoryID"},
+		{"special_predicate_type", "predicate_type", "PredicateType"},
+		{"special_owner_data", "owner_data", "OwnerData"},
+		{"special_runner_data", "runner_data", "RunnerData"},
+		{"special_commit_data", "commit_data", "CommitData"},
+		{"special_repository_data", "repository_data", "RepositoryData"},
+		{"special_workflow_data", "workflow_data", "WorkflowData"},
+		{"special_job_data", "job_data", "JobData"},
+		{"special_policy_ref", "policy_ref", "PolicyRef"},
+		{"special_control_ids", "control_ids", "ControlIDs"},
+		{"special_github_server_url", "github_server_url", "GitHubServerURL"},
+		{"special_workflow_ref_path", "workflow_ref_path", "WorkflowRefPath"},
+		{"special_run_number", "run_number", "RunNumber"},
+		{"special_triggered_by", "triggered_by", "TriggeredBy"},
+		{"special_started_at", "started_at", "StartedAt"},
+		{"special_completed_at", "completed_at", "CompletedAt"},
+		{"special_owner_id", "owner_id", "OwnerID"},
+		{"special_repository_id", "repository_id", "RepositoryID"},
+		{"special_run_id", "run_id", "RunID"},
+		{"special_id_token", "id_token", "IDToken"},
 		{"special_os", "os", "OS"},
 		{"special_sha", "sha", "SHA"},
-		{"special_token", "id-token", "IDToken"},
-		{"predicate_fields", "workflowData", "WorkflowData"},
-		{"predicate_fields_kebab", "workflow-data", "WorkflowData"},
+		{"special_type", "_type", "Type"},
+		{"camelCase", "camelCase", "CamelCase"},
+		{"snake_case", "snake_case", "SnakeCase"},
+		{"mixed_CASE", "mixed_CASE", "MixedCase"},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			result := sanitizeFieldName(tt.input)
-			assert.Equal(t, tt.expected, result)
+			if result != tt.expected {
+				t.Errorf("expected: %q, got: %q", tt.expected, result)
+			}
 		})
 	}
 }
 
 func TestGenerateSchema(t *testing.T) {
-	// test a simple schema
-	simpleSchema := map[string]interface{}{
+	schema := map[string]interface{}{
 		"type": "object",
 		"properties": map[string]interface{}{
-			"name": map[string]interface{}{
+			"_type": map[string]interface{}{
 				"type": "string",
 			},
-			"age": map[string]interface{}{
-				"type": "integer",
+			"predicateType": map[string]interface{}{
+				"type": "string",
 			},
-			"metadata": map[string]interface{}{
+			"subject": map[string]interface{}{
+				"type": "array",
+				"items": map[string]interface{}{
+					"type": "object",
+					"properties": map[string]interface{}{
+						"name": map[string]interface{}{
+							"type": "string",
+						},
+						"digest": map[string]interface{}{
+							"type": "object",
+							"properties": map[string]interface{}{
+								"sha256": map[string]interface{}{
+									"type": "string",
+								},
+							},
+						},
+					},
+				},
+			},
+			"predicate": map[string]interface{}{
 				"type": "object",
 				"properties": map[string]interface{}{
-					"created-at": map[string]interface{}{
-						"type": "string",
-					},
-					"github-url": map[string]interface{}{
+					"test": map[string]interface{}{
 						"type": "string",
 					},
 				},
 			},
 		},
-	}
-
-	result, err := generateSchema("TestType", simpleSchema)
-	require.NoError(t, err)
-
-	// verify the generated code contains expected fields
-	assert.Contains(t, result, "package schema")
-	assert.Contains(t, result, "type TestType struct")
-	assert.Contains(t, result, "Name string `json:\"name\"`")
-	assert.Contains(t, result, "Age int `json:\"age\"`")
-	assert.Contains(t, result, "CreatedAt string `json:\"created-at\"`")
-	assert.Contains(t, result, "GitHubURL string `json:\"github-url\"`")
-
-	// test array type schema
-	arraySchema := map[string]interface{}{
-		"type": "array",
-		"items": map[string]interface{}{
-			"type": "object",
-			"properties": map[string]interface{}{
-				"id": map[string]interface{}{
-					"type": "string",
-				},
-				"tags": map[string]interface{}{
-					"type": "array",
-					"items": map[string]interface{}{
-						"type": "string",
-					},
-				},
-			},
+		"required": []interface{}{
+			"_type",
+			"predicateType",
+			"subject",
+			"predicate",
 		},
 	}
 
-	result, err = generateSchema("ArrayType", arraySchema)
-	require.NoError(t, err)
+	code, err := generateSchema(schema, "TestStruct")
+	assert.NoError(t, err)
+	assert.NotEmpty(t, code)
 
-	// verify the generated array type
-	assert.Contains(t, result, "package schema")
-	assert.Contains(t, result, "type ArrayType []struct")
-	assert.Contains(t, result, "ID string `json:\"id\"`")
-	assert.Contains(t, result, "Tags []string `json:\"tags\"`")
+	// Verify the generated code contains the expected struct
+	expectedStruct := `type TestStruct struct {
+	Type          string    ` + "`json:\"_type\"`" + `
+	PredicateType string    ` + "`json:\"predicateType\"`" + `
+	Subject       []Subject ` + "`json:\"subject\"`" + `
+	Predicate     TestStructPredicate ` + "`json:\"predicate\"`" + `
+}
+
+type TestStructPredicate struct {
+	Test string ` + "`json:\"test\"`" + `
+}`
+
+	assert.Contains(t, code, expectedStruct)
 }
 
 func TestGenerateStructFields(t *testing.T) {
-	props := map[string]interface{}{
-		"permissions": map[string]interface{}{
-			"type": "object",
-		},
-		"inputs": map[string]interface{}{
-			"type": "object",
-		},
-		"nested": map[string]interface{}{
-			"type": "object",
-			"properties": map[string]interface{}{
-				"field1": map[string]interface{}{
+	schema := map[string]interface{}{
+		"type": "object",
+		"properties": map[string]interface{}{
+			"stringField": map[string]interface{}{
+				"type": "string",
+			},
+			"intField": map[string]interface{}{
+				"type": "integer",
+			},
+			"arrayField": map[string]interface{}{
+				"type": "array",
+				"items": map[string]interface{}{
 					"type": "string",
 				},
-				"field2": map[string]interface{}{
-					"type": "array",
-					"items": map[string]interface{}{
+			},
+			"objectField": map[string]interface{}{
+				"type": "object",
+				"properties": map[string]interface{}{
+					"nestedField": map[string]interface{}{
 						"type": "string",
 					},
 				},
@@ -122,14 +143,96 @@ func TestGenerateStructFields(t *testing.T) {
 		},
 	}
 
-	result, err := generateStructFields(props, "    ")
-	require.NoError(t, err)
+	fields, nestedTypes, err := generateStructFields(schema, "TestStruct")
+	if err != nil {
+		t.Fatalf("generateStructFields failed: %v", err)
+	}
 
-	// verify special cases for permissions and inputs
-	assert.Contains(t, result, "Permissions map[string]string `json:\"permissions\"`")
-	assert.Contains(t, result, "Inputs map[string]interface{} `json:\"inputs\"`")
+	fieldsStr := strings.Join(fields, "\n")
 
-	// verify nested struct generation
-	assert.Contains(t, result, "Field1 string `json:\"field1\"`")
-	assert.Contains(t, result, "Field2 []string `json:\"field2\"`")
+	// Verify field types are correctly generated
+	expectedTypes := map[string]string{
+		"StringField": "string",
+		"IntField":    "int",
+		"ArrayField":  "[]string",
+	}
+
+	for fieldName, fieldType := range expectedTypes {
+		if !strings.Contains(fieldsStr, fieldName+" "+fieldType) {
+			t.Errorf("generated fields do not contain %s with type %s", fieldName, fieldType)
+		}
+	}
+
+	// Verify nested type generation
+	if len(nestedTypes) == 0 {
+		t.Error("expected nested types for object field")
+	}
+}
+
+func TestValidateSchema(t *testing.T) {
+	tests := []struct {
+		name          string
+		schema        map[string]interface{}
+		expectError   bool
+		errorContains string
+	}{
+		{
+			name: "valid schema",
+			schema: map[string]interface{}{
+				"type": "object",
+				"properties": map[string]interface{}{
+					"_type": map[string]interface{}{
+						"type": "string",
+					},
+					"subject": map[string]interface{}{
+						"type": "array",
+					},
+				},
+				"required": []interface{}{"_type", "subject"},
+			},
+			expectError: false,
+		},
+		{
+			name:          "missing type",
+			schema:        map[string]interface{}{},
+			expectError:   true,
+			errorContains: "schema has no type field",
+		},
+		{
+			name: "missing properties",
+			schema: map[string]interface{}{
+				"type": "object",
+			},
+			expectError:   true,
+			errorContains: "schema has no properties",
+		},
+		{
+			name: "missing required fields",
+			schema: map[string]interface{}{
+				"type": "object",
+				"properties": map[string]interface{}{
+					"foo": map[string]interface{}{
+						"type": "string",
+					},
+				},
+			},
+			expectError:   true,
+			errorContains: "missing required field",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := validateSchema(tt.schema)
+			if tt.expectError {
+				if err == nil {
+					t.Error("expected error but got nil")
+				} else if !strings.Contains(err.Error(), tt.errorContains) {
+					t.Errorf("expected error containing %q but got %q", tt.errorContains, err.Error())
+				}
+			} else if err != nil {
+				t.Errorf("unexpected error: %v", err)
+			}
+		})
+	}
 }

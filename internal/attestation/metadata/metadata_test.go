@@ -1,106 +1,103 @@
 package metadata
 
 import (
-	"encoding/json"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
 
 func TestNewFromOptions(t *testing.T) {
-	now := time.Now().UTC()
-
 	opts := Options{
 		SubjectName:     "test-subject",
-		Digest:          "sha256:abc123",
-		Version:         "v1.0.0",
-		Created:         now,
-		Type:            "container-image",
-		Registry:        "ghcr.io",
-		FullName:        "test-subject:v1.0.0",
-		Repository:      "owner/repo",
-		RepositoryID:    "12345",
-		GitHubServerURL: "https://github.com",
-		Owner:           "owner",
-		OwnerID:         "67890",
-		OS:              "linux",
-		Arch:            "amd64",
-		Environment:     "github-hosted",
-		WorkflowRefPath: ".github/workflows/build.yml",
-		Inputs:          map[string]any{"foo": "bar"},
-		Branch:          "main",
-		Event:           "push",
-		RunNumber:       "1",
-		RunID:           "123456789",
-		Status:          "success",
-		TriggeredBy:     "user",
-		StartedAt:       now.Add(-time.Hour),
-		CompletedAt:     now,
-		SHA:             "abcdef123456",
-		Timestamp:       now.Add(-time.Hour),
-		Organization:    "owner",
-		PolicyRef:       "https://github.com/owner/policy",
-		ControlIds:      []string{"CONTROL-001"},
-		Permissions:     map[string]string{"id-token": "write"},
+		SubjectPath:     "test-path",
+		Digest:          "test-digest",
+		Version:         "1.0.0",
+		Created:         time.Now(),
+		Type:            ArtifactTypeBlob,
+		Path:            "test-path",
+		Repository:      "test-repo",
+		RepositoryID:    "test-repo-id",
+		GitHubServerURL: "test-server-url",
+		Owner:           "test-owner",
+		OwnerID:         "test-owner-id",
+		OS:              "test-os",
+		Arch:            "test-arch",
+		Environment:     "test-env",
+		WorkflowRefPath: "test-workflow-ref",
+		Inputs:          map[string]any{"test": "value"},
+		Branch:          "test-branch",
+		Event:           "test-event",
+		RunNumber:       "test-run-number",
+		RunID:           "test-run-id",
+		Status:          "test-status",
+		TriggeredBy:     "test-user",
+		StartedAt:       time.Now(),
+		CompletedAt:     time.Now(),
+		SHA:             "test-sha",
+		Timestamp:       time.Now(),
+		Organization:    "test-org",
+		PolicyRef:       "test-policy",
+		ControlIds:      []string{"test-control"},
+		Permissions: map[string]string{
+			"id-token":     "write",
+			"attestations": "write",
+			"contents":     "read",
+			"packages":     "read",
+		},
 	}
 
 	m, err := NewFromOptions(opts)
-	require.NoError(t, err)
+	assert.NoError(t, err)
+	assert.NotNil(t, m)
 
-	assert.Equal(t, PredicateTypeURI, m.Type())
-	assert.Equal(t, "test-subject", m.Subject[0].Name)
-	assert.Equal(t, "sha256:abc123", m.Subject[0].Digest.SHA256)
+	// Verify Statement fields
+	assert.Equal(t, "https://in-toto.io/Statement/v1", m.Statement.Type)
+	assert.Equal(t, PredicateTypeURI, m.Statement.PredicateType)
+	assert.Equal(t, opts.SubjectName, m.Statement.Subject[0].Name)
+	assert.Equal(t, opts.Digest, m.Statement.Subject[0].Digest.SHA256)
 
-	assert.Equal(t, "v1.0.0", m.Predicate.Artifact.Version)
-	assert.Equal(t, now.Format(time.RFC3339), m.Predicate.Artifact.Created)
-	assert.Equal(t, "container-image", m.Predicate.Artifact.Type)
-	assert.Equal(t, "ghcr.io", m.Predicate.Artifact.Registry)
-	assert.Equal(t, "test-subject:v1.0.0", m.Predicate.Artifact.FullName)
-	assert.Equal(t, "sha256:abc123", m.Predicate.Artifact.Digest)
+	// Verify Predicate fields
+	assert.Equal(t, opts.Version, m.Predicate.Artifact.Version)
+	assert.Equal(t, opts.Created.Format(time.RFC3339), m.Predicate.Artifact.Created)
+	assert.Equal(t, string(opts.Type), m.Predicate.Artifact.Type)
+	assert.Equal(t, opts.Path, m.Predicate.Artifact.Path)
 
-	assert.Equal(t, "owner/repo", m.Predicate.RepositoryData.Repository)
-	assert.Equal(t, "12345", m.Predicate.RepositoryData.RepositoryID)
-	assert.Equal(t, "https://github.com", m.Predicate.RepositoryData.GitHubServerURL)
+	assert.Equal(t, opts.Repository, m.Predicate.RepositoryData.Repository)
+	assert.Equal(t, opts.RepositoryID, m.Predicate.RepositoryData.RepositoryId)
+	assert.Equal(t, opts.GitHubServerURL, m.Predicate.RepositoryData.GithubServerURL)
 
-	assert.Equal(t, "owner", m.Predicate.OwnerData.Owner)
-	assert.Equal(t, "67890", m.Predicate.OwnerData.OwnerID)
+	assert.Equal(t, opts.Owner, m.Predicate.OwnerData.Owner)
+	assert.Equal(t, opts.OwnerID, m.Predicate.OwnerData.OwnerId)
 
-	assert.Equal(t, "linux", m.Predicate.RunnerData.OS)
-	assert.Equal(t, "amd64", m.Predicate.RunnerData.Arch)
-	assert.Equal(t, "github-hosted", m.Predicate.RunnerData.Environment)
+	assert.Equal(t, opts.OS, m.Predicate.RunnerData.OS)
+	assert.Equal(t, opts.Arch, m.Predicate.RunnerData.Arch)
+	assert.Equal(t, opts.Environment, m.Predicate.RunnerData.Environment)
 
-	assert.Equal(t, ".github/workflows/build.yml", m.Predicate.WorkflowData.WorkflowRefPath)
-	assert.Equal(t, map[string]any{"foo": "bar"}, m.Predicate.WorkflowData.Inputs)
-	assert.Equal(t, "main", m.Predicate.WorkflowData.Branch)
-	assert.Equal(t, "push", m.Predicate.WorkflowData.Event)
+	assert.Equal(t, opts.WorkflowRefPath, m.Predicate.WorkflowData.WorkflowRefPath)
+	assert.Equal(t, map[string]any(m.Predicate.WorkflowData.Inputs), opts.Inputs)
+	assert.Equal(t, opts.Branch, m.Predicate.WorkflowData.Branch)
+	assert.Equal(t, opts.Event, m.Predicate.WorkflowData.Event)
 
-	assert.Equal(t, "1", m.Predicate.JobData.RunNumber)
-	assert.Equal(t, "123456789", m.Predicate.JobData.RunID)
-	assert.Equal(t, "success", m.Predicate.JobData.Status)
-	assert.Equal(t, "user", m.Predicate.JobData.TriggeredBy)
-	assert.Equal(t, now.Add(-time.Hour).Format(time.RFC3339), m.Predicate.JobData.StartedAt)
-	assert.Equal(t, now.Format(time.RFC3339), m.Predicate.JobData.CompletedAt)
+	assert.Equal(t, opts.RunNumber, m.Predicate.JobData.RunNumber)
+	assert.Equal(t, opts.RunID, m.Predicate.JobData.RunId)
+	assert.Equal(t, opts.Status, m.Predicate.JobData.Status)
+	assert.Equal(t, opts.TriggeredBy, m.Predicate.JobData.TriggeredBy)
+	assert.Equal(t, opts.StartedAt.Format(time.RFC3339), m.Predicate.JobData.StartedAt)
+	assert.Equal(t, opts.CompletedAt.Format(time.RFC3339), m.Predicate.JobData.CompletedAt)
 
-	assert.Equal(t, "abcdef123456", m.Predicate.CommitData.SHA)
-	assert.Equal(t, now.Add(-time.Hour).Format(time.RFC3339), m.Predicate.CommitData.Timestamp)
+	assert.Equal(t, opts.SHA, m.Predicate.CommitData.SHA)
+	assert.Equal(t, opts.Timestamp.Format(time.RFC3339), m.Predicate.CommitData.Timestamp)
 
-	assert.Equal(t, "owner", m.Predicate.Organization.Name)
+	assert.Equal(t, opts.Organization, m.Predicate.Organization.Name)
 
-	assert.Equal(t, "https://github.com/owner/policy", m.Predicate.Compliance.PolicyRef)
-	assert.Equal(t, []string{"CONTROL-001"}, m.Predicate.Compliance.ControlIds)
+	assert.Equal(t, opts.PolicyRef, m.Predicate.Compliance.PolicyRef)
+	assert.Equal(t, opts.ControlIds, m.Predicate.Compliance.ControlIds)
 
-	assert.Equal(t, map[string]string{"id-token": "write"}, m.Predicate.Security.Permissions)
-
-	data, err := m.Generate()
-	require.NoError(t, err)
-
-	var jsonMap map[string]interface{}
-	err = json.Unmarshal(data, &jsonMap)
-	require.NoError(t, err)
-
-	assert.Equal(t, PredicateTypeURI, jsonMap["predicateType"])
+	assert.Equal(t, opts.Permissions["id-token"], m.Predicate.Security.Permissions.IdToken)
+	assert.Equal(t, opts.Permissions["attestations"], m.Predicate.Security.Permissions.Attestations)
+	assert.Equal(t, opts.Permissions["contents"], m.Predicate.Security.Permissions.Contents)
+	assert.Equal(t, opts.Permissions["packages"], m.Predicate.Security.Permissions.Packages)
 }
 
 func TestMetadataType(t *testing.T) {

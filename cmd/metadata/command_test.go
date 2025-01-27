@@ -26,6 +26,7 @@ func TestMetadataCommand(t *testing.T) {
 		os.Setenv("GITHUB_RUN_NUMBER", "1")
 		os.Setenv("GITHUB_RUN_ID", "789")
 		os.Setenv("GITHUB_ACTOR", "test-user")
+		os.Setenv("GITHUB_JOB_STATUS", "success")
 		os.Setenv("RUNNER_OS", "Linux")
 		os.Setenv("RUNNER_ARCH", "X64")
 		os.Setenv("RUNNER_ENVIRONMENT", "github-hosted")
@@ -37,7 +38,6 @@ func TestMetadataCommand(t *testing.T) {
 		cmd.SetArgs([]string{
 			"--subject-name", "test-image",
 			"--digest", "sha256:123",
-			"--registry", "ghcr.io",
 			"--policy-ref", "https://example.com/policy",
 			"--control-ids", "TEST-001,TEST-002",
 		})
@@ -49,12 +49,14 @@ func TestMetadataCommand(t *testing.T) {
 		err = json.Unmarshal(output.Bytes(), &result)
 		require.NoError(t, err)
 
+		subject := result["subject"].([]interface{})[0].(map[string]interface{})
+		assert.Equal(t, "test-image", subject["name"])
+		assert.Equal(t, "sha256:123", subject["digest"].(map[string]interface{})["sha256"])
+
 		predicate := result["predicate"].(map[string]interface{})
 
 		artifact := predicate["artifact"].(map[string]interface{})
-		assert.Equal(t, "container-image", artifact["type"])
-		assert.Equal(t, "ghcr.io", artifact["registry"])
-		assert.Equal(t, "sha256:123", artifact["digest"])
+		assert.Equal(t, "https://in-toto.io/attestation/github-workflow/v0.2", artifact["type"])
 
 		repoData := predicate["repositoryData"].(map[string]interface{})
 		assert.Equal(t, "test-repo", repoData["repository"])

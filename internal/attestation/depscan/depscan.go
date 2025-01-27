@@ -6,7 +6,7 @@ import (
 	"os"
 	"time"
 
-	"gh-attest-util/internal/attestation/schema"
+	schema "gh-attest-util/internal/attestation/generated"
 
 	"github.com/CycloneDX/cyclonedx-go"
 )
@@ -14,7 +14,25 @@ import (
 const PredicateTypeURI = "https://in-toto.io/attestation/vulns/v0.2"
 
 type DependencyScan struct {
-	schema.Dependencyscan
+	schema.Statement
+	Predicate struct {
+		Scanner struct {
+			URI     string `json:"uri"`
+			Version string `json:"version"`
+			Db      struct {
+				Name        string `json:"name"`
+				Version     string `json:"version"`
+				Lastupdated string `json:"lastUpdated"`
+			} `json:"db"`
+			Result []struct {
+				ID       string `json:"id"`
+				Severity struct {
+					Method string `json:"method"`
+					Score  string `json:"score"`
+				} `json:"severity"`
+			} `json:"result"`
+		} `json:"scanner"`
+	} `json:"predicate"`
 }
 
 type Options struct {
@@ -43,7 +61,7 @@ func NewFromGrypeResults(opts Options) (*DependencyScan, error) {
 	}
 
 	scan := &DependencyScan{
-		Dependencyscan: schema.Dependencyscan{
+		Statement: schema.Statement{
 			Type:          "https://in-toto.io/Statement/v1",
 			PredicateType: PredicateTypeURI,
 			Subject: []schema.Subject{
@@ -69,11 +87,11 @@ func NewFromGrypeResults(opts Options) (*DependencyScan, error) {
 		}
 	}
 
-	scan.Predicate.Scanner.DB.Name = "grype"
-	scan.Predicate.Scanner.DB.Version = grypeResults.SpecVersion.String()
+	scan.Predicate.Scanner.Db.Name = "grype"
+	scan.Predicate.Scanner.Db.Version = grypeResults.SpecVersion.String()
 	if grypeResults.Metadata != nil {
 		if t, err := time.Parse(time.RFC3339, grypeResults.Metadata.Timestamp); err == nil {
-			scan.Predicate.Scanner.DB.LastUpdated = t.Format(time.RFC3339)
+			scan.Predicate.Scanner.Db.Lastupdated = t.Format(time.RFC3339)
 		}
 	}
 

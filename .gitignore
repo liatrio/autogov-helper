@@ -27,12 +27,16 @@ go.work.sum
 # bin directory
 bin/
 
-.DS_Store
-
+# ide and editor files
+.idea/
+.vscode/
+*.swp
+*.swo
 *.code-workspace
 
-# Generated schema files
-internal/attestation/schema/*.schema.json
-internal/attestation/schema/*.schema.go
-internal/attestation/schema/common.go
-internal/attestation/schema/generated/
+# os files
+.DS_Store
+Thumbs.db
+
+# generated files
+**/generated/

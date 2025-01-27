@@ -1,10 +1,19 @@
-.PHONY: build test clean lint generate all
+.PHONY: build test clean lint generate format all
 
-all: lint test build
+# variables
+BINARY_NAME := gh-attest-util
+BINARY_DIR := bin
+GENERATED_DIR := internal/attestation/schema/generated
+
+# get github token from gh cli if not set
+GH_TOKEN ?= $(shell gh auth token)
+export GH_TOKEN
+
+all: format lint test build
 
 build: generate
-	mkdir -p bin
-	GH_TOKEN=$(gh auth token) && go build -o bin/gh-attest-util .
+	mkdir -p $(BINARY_DIR)
+	go build -o $(BINARY_DIR)/$(BINARY_NAME) .
 
 test: generate
 	go test ./...
@@ -12,9 +21,12 @@ test: generate
 lint: generate
 	golangci-lint run
 
+format:
+	gofmt -w .
+
 generate:
-	cd internal/attestation/schema/gen && go run generate.go
+	go generate ./...
 
 clean:
-	rm -rf bin/
-	rm -rf internal/attestation/schema/generated/
+	rm -rf $(BINARY_DIR)
+	rm -rf $(GENERATED_DIR)

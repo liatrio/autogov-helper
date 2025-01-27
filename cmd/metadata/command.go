@@ -33,7 +33,7 @@ func NewCommand() *cobra.Command {
 
 			opts.Version = fmt.Sprintf("%s-%s", shortSHA, ctx.RunNumber)
 			opts.Created = now
-			opts.Type = buildType
+			opts.Type = "https://in-toto.io/attestation/github-workflow/v0.2"
 			opts.Repository = ctx.Repository
 			opts.RepositoryID = ctx.RepositoryID
 			opts.GitHubServerURL = ctx.ServerURL
@@ -48,7 +48,7 @@ func NewCommand() *cobra.Command {
 			opts.Event = ctx.EventName
 			opts.RunNumber = ctx.RunNumber
 			opts.RunID = ctx.RunID
-			opts.Status = "success"
+			opts.Status = ctx.JobStatus
 			opts.TriggeredBy = ctx.Actor
 			opts.Organization = ctx.RepositoryOwner
 			opts.SHA = ctx.SHA
@@ -118,7 +118,6 @@ func NewCommand() *cobra.Command {
 	flags := cmd.Flags()
 	flags.StringVar(&opts.SubjectName, "subject-name", "", "Name of the subject")
 	flags.StringVar(&opts.Digest, "digest", "", "Digest of the subject")
-	flags.StringVar(&opts.Registry, "registry", "", "Registry where the subject is stored")
 	flags.StringVar(&opts.PolicyRef, "policy-ref", "", "Reference to the policy being enforced")
 	flags.StringSliceVar(&opts.ControlIds, "control-ids", nil, "Control IDs being enforced")
 	flags.StringVar(&opts.SubjectPath, "subject-path", "", "Path to the subject (required for blob type)")
