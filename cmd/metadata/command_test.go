@@ -30,6 +30,16 @@ func TestMetadataCommand(t *testing.T) {
 		os.Setenv("RUNNER_OS", "Linux")
 		os.Setenv("RUNNER_ARCH", "X64")
 		os.Setenv("RUNNER_ENVIRONMENT", "github-hosted")
+		os.Setenv("POLICY_VERSION", "v0.8.0")
+		os.Setenv("GITHUB_TOKEN", os.Getenv("GH_TOKEN"))
+
+		// Set up test environment for compliance and security
+		os.Setenv("POLICY_REF", "https://github.com/liatrio/demo-gh-autogov-policy-library")
+		os.Setenv("CONTROL_IDS", "test-control")
+		os.Setenv("PERMISSIONS_ID_TOKEN", "write")
+		os.Setenv("PERMISSIONS_ATTESTATIONS", "write")
+		os.Setenv("PERMISSIONS_CONTENTS", "read")
+		os.Setenv("PERMISSIONS_PACKAGES", "read")
 
 		cmd := metadata.NewCommand()
 		var output bytes.Buffer
@@ -38,8 +48,6 @@ func TestMetadataCommand(t *testing.T) {
 		cmd.SetArgs([]string{
 			"--subject-name", "test-image",
 			"--digest", "sha256:123",
-			"--policy-ref", "https://example.com/policy",
-			"--control-ids", "TEST-001,TEST-002",
 		})
 
 		err := cmd.Execute()
@@ -56,12 +64,12 @@ func TestMetadataCommand(t *testing.T) {
 		predicate := result["predicate"].(map[string]interface{})
 
 		artifact := predicate["artifact"].(map[string]interface{})
-		assert.Equal(t, "https://in-toto.io/attestation/github-workflow/v0.2", artifact["type"])
+		assert.Equal(t, "container-image", artifact["type"])
 
-		repoData := predicate["repositoryData"].(map[string]interface{})
-		assert.Equal(t, "test-repo", repoData["repository"])
-		assert.Equal(t, "123", repoData["repositoryId"])
-		assert.Equal(t, "https://github.com", repoData["githubServerURL"])
+		repositoryData := predicate["repositoryData"].(map[string]interface{})
+		assert.Equal(t, "test-repo", repositoryData["repository"])
+		assert.Equal(t, "123", repositoryData["repositoryId"])
+		assert.Equal(t, "https://github.com", repositoryData["githubServerURL"])
 
 		ownerData := predicate["ownerData"].(map[string]interface{})
 		assert.Equal(t, "test-owner", ownerData["owner"])
@@ -86,18 +94,18 @@ func TestMetadataCommand(t *testing.T) {
 		commitData := predicate["commitData"].(map[string]interface{})
 		assert.Equal(t, "abc1234", commitData["sha"])
 
-		org := predicate["organization"].(map[string]interface{})
-		assert.Equal(t, "test-owner", org["name"])
+		organization := predicate["organization"].(map[string]interface{})
+		assert.Equal(t, "test-owner", organization["name"])
 
 		compliance := predicate["compliance"].(map[string]interface{})
-		assert.Equal(t, "https://example.com/policy", compliance["policyRef"])
-		assert.Equal(t, []interface{}{"TEST-001", "TEST-002"}, compliance["controlIds"])
+		assert.Equal(t, "https://github.com/liatrio/demo-gh-autogov-policy-library", compliance["policyRef"])
+		assert.Equal(t, []interface{}{"test-control"}, compliance["controlIds"])
 
 		security := predicate["security"].(map[string]interface{})
 		permissions := security["permissions"].(map[string]interface{})
 		assert.Equal(t, "write", permissions["id-token"])
 		assert.Equal(t, "write", permissions["attestations"])
-		assert.Equal(t, "write", permissions["packages"])
 		assert.Equal(t, "read", permissions["contents"])
+		assert.Equal(t, "read", permissions["packages"])
 	})
 }

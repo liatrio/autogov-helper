@@ -31,54 +31,53 @@ func NewCommand() *cobra.Command {
 				shortSHA = ctx.SHA[:7]
 			}
 
+			// Set artifact details
 			opts.Version = fmt.Sprintf("%s-%s", shortSHA, ctx.RunNumber)
 			opts.Created = now
-			opts.Type = "https://in-toto.io/attestation/github-workflow/v0.2"
+			opts.Type = metadata.ArtifactTypeContainerImage
+			if buildType == "blob" {
+				opts.Type = metadata.ArtifactTypeBlob
+			}
+
+			// Set repository details
 			opts.Repository = ctx.Repository
 			opts.RepositoryID = ctx.RepositoryID
 			opts.GitHubServerURL = ctx.ServerURL
+
+			// Set owner details
 			opts.Owner = ctx.RepositoryOwner
 			opts.OwnerID = ctx.RepositoryOwnerID
+
+			// Set runner details
 			opts.OS = ctx.Runner.OS
 			opts.Arch = ctx.Runner.Arch
 			opts.Environment = ctx.Runner.Environment
+
+			// Set workflow details
 			opts.WorkflowRefPath = ctx.WorkflowRef
 			opts.Inputs = ctx.Inputs
 			opts.Branch = ctx.RefName
 			opts.Event = ctx.EventName
+
+			// Set job details
 			opts.RunNumber = ctx.RunNumber
 			opts.RunID = ctx.RunID
 			opts.Status = ctx.JobStatus
 			opts.TriggeredBy = ctx.Actor
-			opts.Organization = ctx.RepositoryOwner
-			opts.SHA = ctx.SHA
-			opts.Permissions = map[string]string{
-				"id-token":     "write",
-				"attestations": "write",
-				"packages":     "write",
-				"contents":     "read",
-			}
-
 			if startTime, err := time.Parse(time.RFC3339, ctx.Event.WorkflowRun.CreatedAt); err == nil {
 				opts.StartedAt = startTime
 			}
 			opts.CompletedAt = now
 
-			if commitTime, err := time.Parse(time.RFC3339, ctx.Event.HeadCommit.Timestamp); err == nil {
-				opts.Timestamp = commitTime
-			}
+			// Set organization details
+			opts.Organization = ctx.RepositoryOwner
 
-			if opts.PolicyRef == "" {
-				opts.PolicyRef = "https://github.com/liatrio/demo-gh-autogov-policy-library"
-			}
+			// Set commit details
+			opts.SHA = ctx.SHA
 
-			if len(opts.ControlIds) == 0 {
-				opts.ControlIds = []string{
-					fmt.Sprintf("%s-PROVENANCE-001", ctx.RepositoryOwner),
-					fmt.Sprintf("%s-SBOM-002", ctx.RepositoryOwner),
-					fmt.Sprintf("%s-METADATA-003", ctx.RepositoryOwner),
-				}
-			}
+			// Set build details
+			opts.BuildType = buildType
+			opts.PermissionType = "github-workflow"
 
 			if buildType == "blob" {
 				if opts.SubjectPath == "" {
@@ -118,8 +117,6 @@ func NewCommand() *cobra.Command {
 	flags := cmd.Flags()
 	flags.StringVar(&opts.SubjectName, "subject-name", "", "Name of the subject")
 	flags.StringVar(&opts.Digest, "digest", "", "Digest of the subject")
-	flags.StringVar(&opts.PolicyRef, "policy-ref", "", "Reference to the policy being enforced")
-	flags.StringSliceVar(&opts.ControlIds, "control-ids", nil, "Control IDs being enforced")
 	flags.StringVar(&opts.SubjectPath, "subject-path", "", "Path to the subject (required for blob type)")
 	flags.StringVar(&buildType, "type", "container-image", "Type of build (container-image or blob)")
 	flags.StringVar(&outputFile, "output", "", "Output file path (defaults to stdout)")

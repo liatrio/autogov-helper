@@ -1,0 +1,51 @@
+{
+  "_type": "https://in-toto.io/Statement/v1",
+  "predicateType": "https://cosign.sigstore.dev/attestation/v1",
+  "subject": [
+    {
+      "name": "{{ .SubjectName }}",
+      "digest": {
+        "sha256": "{{ .Digest }}"
+      }
+    }
+  ],
+  "predicate": {
+    "artifact": {
+      "version": "{{ .Version }}",
+      "created": "{{ .Created }}",
+      "type": "{{ .Type }}",
+      "registry": "{{ .Registry }}",
+      "fullName": "{{ .FullName }}",
+      "digest": "{{ .Digest }}",
+      "path": "{{ .Path }}"
+    },
+    "metadata": {
+      "buildType": "{{ .BuildType }}",
+      "permissionType": "{{ .PermissionType }}",
+      "repository": {
+        "name": "{{ .Repository }}",
+        "owner": "{{ .Owner }}",
+        "url": "{{ .GitHubServerURL }}"
+      },
+      "workflow": {
+        "name": "{{ .WorkflowName }}",
+        "ref": "{{ .WorkflowRefPath }}",
+        "id": "{{ .RunID }}"
+      },
+      "job": {
+        "name": "{{ .JobName }}",
+        "id": "{{ .RunID }}"
+      },
+      "runner": {
+        "name": "{{ .RunnerName }}",
+        "os": "{{ .OS }}"
+      },
+      "commit": {
+        "sha": "{{ .SHA }}",
+        "message": "{{ .CommitMessage }}",
+        "author": "{{ .CommitAuthor }}",
+        "url": "{{ .CommitURL }}"
+      }
+    }
+  }
+} 

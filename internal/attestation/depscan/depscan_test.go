@@ -52,6 +52,8 @@ func TestNewFromGrypeResults(t *testing.T) {
 	err := os.WriteFile(resultsPath, testData, 0600)
 	require.NoError(t, err)
 
+	os.Setenv("GITHUB_TOKEN", os.Getenv("GH_TOKEN"))
+
 	opts := Options{
 		ResultsPath: resultsPath,
 		SubjectName: "test-subject",

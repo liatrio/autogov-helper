@@ -19,13 +19,12 @@
 
 # Go workspace file
 go.work
-go.work.sum
+
+# Binary directory
+bin/
 
 # env file
 .env
-
-# bin directory
-bin/
 
 # ide and editor files
 .idea/
@@ -34,9 +33,11 @@ bin/
 *.swo
 *.code-workspace
 
-# os files
+# macOS files
 .DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
 Thumbs.db
-
-# generated files
-**/generated/

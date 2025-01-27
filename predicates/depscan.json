@@ -1,0 +1,32 @@
+{
+  "_type": "https://in-toto.io/Statement/v1",
+  "predicateType": "https://in-toto.io/attestation/vulns/v0.2",
+  "subject": [
+    {
+      "name": "{{ .SubjectName }}",
+      "digest": {
+        "sha256": "{{ .Digest }}"
+      }
+    }
+  ],
+  "predicate": {
+    "scanner": {
+      "uri": "{{ .ScannerURI }}",
+      "version": "{{ .ScannerVersion }}",
+      "db": {
+        "name": "{{ .DBName }}",
+        "version": "{{ .DBVersion }}",
+        "lastUpdated": "{{ .DBLastUpdated }}"
+      },
+      "result": [
+        {
+          "id": "{{ .VulnID }}",
+          "severity": {
+            "method": "{{ .SeverityMethod }}",
+            "score": "{{ .SeverityScore }}"
+          }
+        }
+      ]
+    }
+  }
+} 

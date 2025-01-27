@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"os"
 
 	"gh-attest-util/cmd/depscan"
@@ -11,21 +10,18 @@ import (
 )
 
 func main() {
-	cmd := newRootCmd()
-	if err := cmd.Execute(); err != nil {
-		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
-		os.Exit(1)
-	}
-}
-
-func newRootCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "gh-attest-util",
-		Short: "GitHub Attestation Utility",
-		Long:  "A utility for generating custom predicates for GitHub artifact attestations",
+		Short: "GitHub Actions attestation utilities",
+		Long:  "GitHub Actions attestation utilities for generating attestations",
 	}
 
-	cmd.AddCommand(depscan.NewCommand())
-	cmd.AddCommand(metadata.NewCommand())
-	return cmd
+	cmd.AddCommand(
+		depscan.NewCommand(),
+		metadata.NewCommand(),
+	)
+
+	if err := cmd.Execute(); err != nil {
+		os.Exit(1)
+	}
 }

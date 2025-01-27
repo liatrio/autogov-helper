@@ -56,6 +56,9 @@ func TestDepscanCommand(t *testing.T) {
 		err := os.WriteFile(resultsPath, testData, 0600)
 		require.NoError(t, err)
 
+		os.Setenv("POLICY_VERSION", "v0.8.0")
+		os.Setenv("GITHUB_TOKEN", os.Getenv("GH_TOKEN"))
+
 		cmd := depscan.NewCommand()
 		var output bytes.Buffer
 		cmd.SetOut(&output)

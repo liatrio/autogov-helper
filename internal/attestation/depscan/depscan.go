@@ -6,15 +6,30 @@ import (
 	"os"
 	"time"
 
-	schema "gh-attest-util/internal/attestation/generated"
+	"gh-attest-util/internal/validation"
 
 	"github.com/CycloneDX/cyclonedx-go"
 )
 
 const PredicateTypeURI = "https://in-toto.io/attestation/vulns/v0.2"
 
+// Statement represents the base statement type for all attestations
+type Statement struct {
+	Type          string    `json:"_type"`
+	PredicateType string    `json:"predicateType"`
+	Subject       []Subject `json:"subject"`
+}
+
+// Subject represents a subject in an attestation
+type Subject struct {
+	Name   string `json:"name"`
+	Digest struct {
+		SHA256 string `json:"sha256"`
+	} `json:"digest"`
+}
+
 type DependencyScan struct {
-	schema.Statement
+	Statement
 	Predicate struct {
 		Scanner struct {
 			URI     string `json:"uri"`
@@ -46,7 +61,16 @@ func (d *DependencyScan) Type() string {
 }
 
 func (d *DependencyScan) Generate() ([]byte, error) {
-	return json.MarshalIndent(d, "", "  ")
+	data, err := json.MarshalIndent(d, "", "  ")
+	if err != nil {
+		return nil, err
+	}
+
+	if err := validation.ValidateDepscan(data); err != nil {
+		return nil, err
+	}
+
+	return data, nil
 }
 
 func NewFromGrypeResults(opts Options) (*DependencyScan, error) {
@@ -61,10 +85,10 @@ func NewFromGrypeResults(opts Options) (*DependencyScan, error) {
 	}
 
 	scan := &DependencyScan{
-		Statement: schema.Statement{
+		Statement: Statement{
 			Type:          "https://in-toto.io/Statement/v1",
 			PredicateType: PredicateTypeURI,
-			Subject: []schema.Subject{
+			Subject: []Subject{
 				{
 					Name: opts.SubjectName,
 					Digest: struct {

@@ -17,14 +17,17 @@ A GitHub Actions utility for generating standardized artifact attestations.
 Generates a standardized metadata attestation including:
 
 - Artifact details (version, digest, registry info)
-- Repository context
-- Workflow/job information
-- Commit data
+- Repository data (name, ID, GitHub server URL)
+- Owner data (name, ID)
+- Runner data (OS, architecture, environment)
+- Workflow data (reference path, inputs, branch, event)
+- Job data (run number, ID, status, trigger, timestamps)
+- Commit data (SHA, timestamp)
 - Organization details
 - Compliance metadata
 - Security permissions
 
-### Dependency Scan Attestation WIP
+### Dependency Scan Attestation
 
 ```yaml
 - uses: liatrio/gh-attest-util@main
@@ -42,22 +45,23 @@ Transforms Grype scan results into a standardized format containing:
 
 ## Development
 
-### Schema Generation
-
-The tool uses code generation to create Go structs from JSON schemas. To generate the schema files:
-
-```bash
-make generate
-```
-
 Requirements:
 - GitHub token with repo access (can be obtained via `gh auth token`)
 - Set `GITHUB_TOKEN` environment variable or have `gh` CLI authenticated
-- Set `POLICY_VERSION` environment variable to use a specific version (optional, defaults to latest release)
+- Set `POLICY_VERSION` environment variable to use a specific version (defaults to v0.8.0)
 
-The generator will:
-1. Fetch schemas from the policy library repository
-2. Generate corresponding Go structs
-3. Place generated files in the `internal/attestation/schema/generated` directory
+### Building and Testing
 
-Note: Generated files are gitignored and will be regenerated during the build process.
+```bash
+# Run all tests
+make test
+
+# Build the binary
+make build
+
+# Format code and run linter
+make format lint
+
+# Clean build artifacts
+make clean
+```
