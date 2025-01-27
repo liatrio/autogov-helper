@@ -4,13 +4,13 @@ import (
 	"encoding/json"
 	"time"
 
-	"gh-attest-util/internal/attestation/schema/generated"
+	"gh-attest-util/internal/attestation/schema"
 )
 
 const PredicateTypeURI = "https://cosign.sigstore.dev/attestation/v1"
 
 type Metadata struct {
-	generated.Metadata
+	schema.Metadata
 }
 
 type Options struct {
@@ -58,10 +58,10 @@ func (m *Metadata) Generate() ([]byte, error) {
 
 func NewFromOptions(opts Options) (*Metadata, error) {
 	m := &Metadata{
-		Metadata: generated.Metadata{
+		Metadata: schema.Metadata{
 			Type:          "https://in-toto.io/Statement/v1",
 			PredicateType: PredicateTypeURI,
-			Subject: []generated.Subject{
+			Subject: []schema.Subject{
 				{
 					Name: opts.SubjectName,
 					Digest: struct {

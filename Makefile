@@ -4,7 +4,7 @@ all: lint test build
 
 build: generate
 	mkdir -p bin
-	go build -o bin/gh-attest-util .
+	GH_TOKEN=$(gh auth token) && go build -o bin/gh-attest-util .
 
 test: generate
 	go test ./...

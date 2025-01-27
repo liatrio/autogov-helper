@@ -62,7 +62,7 @@ func TestGenerateSchema(t *testing.T) {
 	require.NoError(t, err)
 
 	// verify the generated code contains expected fields
-	assert.Contains(t, result, "package generated")
+	assert.Contains(t, result, "package schema")
 	assert.Contains(t, result, "type TestType struct")
 	assert.Contains(t, result, "Name string `json:\"name\"`")
 	assert.Contains(t, result, "Age int `json:\"age\"`")
@@ -92,6 +92,7 @@ func TestGenerateSchema(t *testing.T) {
 	require.NoError(t, err)
 
 	// verify the generated array type
+	assert.Contains(t, result, "package schema")
 	assert.Contains(t, result, "type ArrayType []struct")
 	assert.Contains(t, result, "ID string `json:\"id\"`")
 	assert.Contains(t, result, "Tags []string `json:\"tags\"`")
