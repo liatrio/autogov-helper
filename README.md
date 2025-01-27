@@ -43,6 +43,29 @@ Transforms Grype scan results into a standardized format containing:
 - Vulnerability findings with severity scores
 - Scan timestamps
 
+## Predicate Structure
+
+The `predicates` directory contains JSON examples of the attestation formats:
+
+### metadata.json
+Represents the metadata attestation structure for GitHub Actions workflows, including:
+- Basic artifact information (version, type, etc.)
+- GitHub repository details
+- Workflow and job information
+- Runner environment details
+- Commit information
+
+### depscan.json
+Represents the dependency scan attestation structure for vulnerability scanning, including:
+- Scanner information
+- Database details
+- Vulnerability results
+
+These JSON files serve as:
+1. Documentation of the predicate structure
+2. Examples for validation
+3. References for future updates
+
 ## Development
 
 Requirements:
