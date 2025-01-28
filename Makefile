@@ -1,31 +1,53 @@
-.PHONY: build test clean lint format all
+.PHONY: build test clean lint format all install verify help
 
-# variables
 BINARY_NAME := gh-attest-util
 BINARY_DIR := bin
+VERSION ?= $(shell git describe --tags --always --dirty)
+LDFLAGS := -X main.version=$(VERSION)
 
-# get github token from gh cli if not set
 GH_TOKEN ?= $(shell gh auth token)
 export GH_TOKEN
-
-# set policy version if not set
 POLICY_VERSION ?= v0.8.0
 export POLICY_VERSION
 
-all: format lint test build
+all: verify build
 
 build:
-	mkdir -p $(BINARY_DIR)
-	go build -o $(BINARY_DIR)/$(BINARY_NAME) .
+	@echo "Building $(BINARY_NAME) version $(VERSION)"
+	@mkdir -p $(BINARY_DIR)
+	@go build -ldflags "$(LDFLAGS)" -o $(BINARY_DIR)/$(BINARY_NAME) .
 
 test:
-	go test ./...
+	@echo "Running tests..."
+	@go test -v -coverprofile=coverage.out ./...
+	@go tool cover -func=coverage.out
 
 lint:
-	golangci-lint run
+	@echo "Running linter..."
+	@golangci-lint run
 
 format:
-	gofmt -w .
+	@echo "Formatting code..."
+	@gofmt -w .
 
 clean:
-	rm -rf $(BINARY_DIR)
+	@echo "Cleaning up..."
+	@rm -rf $(BINARY_DIR) coverage.out
+
+install: build
+	@echo "Installing $(BINARY_NAME) to /usr/local/bin"
+	@sudo cp $(BINARY_DIR)/$(BINARY_NAME) /usr/local/bin/
+
+verify: format lint test
+
+help:
+	@echo "Available targets:"
+	@echo "  all       - Run verify and build (default)"
+	@echo "  build     - Build the binary"
+	@echo "  test      - Run tests with coverage"
+	@echo "  lint      - Run linter"
+	@echo "  format    - Format code"
+	@echo "  clean     - Clean build artifacts"
+	@echo "  install   - Install binary to /usr/local/bin"
+	@echo "  verify    - Run format, lint, and test"
+	@echo "  help      - Show this help message"
