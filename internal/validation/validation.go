@@ -1,11 +1,16 @@
 package validation
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"log"
 	"net/http"
+	"net/url"
 	"os"
+	"path"
+	"strings"
+	"time"
 
 	"gh-attest-util/internal/config"
 
@@ -13,7 +18,19 @@ import (
 	"github.com/xeipuuv/gojsonschema"
 )
 
-var schemaBaseURL = "https://raw.githubusercontent.com"
+var (
+	schemaBaseURL = "https://raw.githubusercontent.com"
+	httpClient    = &http.Client{
+		Timeout: 10 * time.Second,
+		Transport: &http.Transport{
+			DisableKeepAlives:   true,
+			DisableCompression:  true,
+			MaxIdleConns:        1,
+			IdleConnTimeout:     30 * time.Second,
+			MaxIdleConnsPerHost: 1,
+		},
+	}
+)
 
 // For testing purposes
 func setSchemaBaseURL(url string) {
@@ -22,61 +39,119 @@ func setSchemaBaseURL(url string) {
 
 // getGitHubClient returns a GitHub client using token from environment
 func getGitHubClient() (*github.Client, error) {
-	token := os.Getenv("GITHUB_TOKEN")
+	// try gh token first, then github token
+	token := os.Getenv("GH_TOKEN")
 	if token == "" {
-		return nil, fmt.Errorf("GITHUB_TOKEN environment variable not set")
+		token = os.Getenv("GITHUB_TOKEN")
 	}
+
+	if token == "" {
+		return nil, fmt.Errorf("neither GH_TOKEN nor GITHUB_TOKEN environment variable is set")
+	}
+
 	return github.NewClient(nil).WithAuthToken(token), nil
+}
+
+// validateSchemaURL ensures the schema URL is safe
+func validateSchemaURL(baseURL, schemaName string) (string, error) {
+	// validate schema name
+	if !strings.HasSuffix(schemaName, ".json") {
+		return "", fmt.Errorf("schema name must end with .json")
+	}
+	if strings.Contains(schemaName, "..") {
+		return "", fmt.Errorf("schema name cannot contain path traversal")
+	}
+
+	// parse and validate base url
+	parsedURL, err := url.Parse(baseURL)
+	if err != nil {
+		return "", fmt.Errorf("invalid base url: %w", err)
+	}
+
+	// ensure schema path is clean and safe
+	schemaPath := path.Clean("/schemas/" + schemaName)
+	if !strings.HasPrefix(schemaPath, "/schemas/") {
+		return "", fmt.Errorf("invalid schema path")
+	}
+
+	// construct final url
+	parsedURL.Path = path.Join(parsedURL.Path, schemaPath)
+	return parsedURL.String(), nil
+}
+
+// fetchSchemaContent fetches schema content either from a direct URL or GitHub API
+func fetchSchemaContent(schemaName string) (string, error) {
+	cfg, err := config.Load()
+	if err != nil {
+		return "", fmt.Errorf("failed to load config: %w", err)
+	}
+
+	// if schema base url is set, use direct HTTP
+	if schemaBaseURL != "https://raw.githubusercontent.com" {
+		url, err := validateSchemaURL(schemaBaseURL, schemaName)
+		if err != nil {
+			return "", fmt.Errorf("invalid schema url: %w", err)
+		}
+
+		req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, url, nil)
+		if err != nil {
+			return "", fmt.Errorf("failed to create request: %w", err)
+		}
+
+		resp, err := httpClient.Do(req)
+		if err != nil {
+			return "", fmt.Errorf("failed to fetch schema: %w", err)
+		}
+		defer resp.Body.Close()
+
+		if resp.StatusCode != http.StatusOK {
+			return "", fmt.Errorf("failed to fetch schema: HTTP %d", resp.StatusCode)
+		}
+
+		content, err := io.ReadAll(resp.Body)
+		if err != nil {
+			return "", fmt.Errorf("failed to read schema content: %w", err)
+		}
+
+		return string(content), nil
+	}
+
+	// otherwise use github api
+	client, err := getGitHubClient()
+	if err != nil {
+		return "", fmt.Errorf("failed to create GitHub client: %w", err)
+	}
+
+	log.Printf("fetching schema %s from %s/%s@%s", schemaName, cfg.PolicyRepo.Owner, cfg.PolicyRepo.Name, cfg.PolicyRepo.Ref)
+
+	content, _, _, err := client.Repositories.GetContents(
+		context.Background(),
+		cfg.PolicyRepo.Owner,
+		cfg.PolicyRepo.Name,
+		fmt.Sprintf("schemas/%s", schemaName),
+		&github.RepositoryContentGetOptions{Ref: cfg.PolicyRepo.Ref},
+	)
+	if err != nil {
+		return "", fmt.Errorf("failed to fetch schema: %w", err)
+	}
+
+	schemaContent, err := content.GetContent()
+	if err != nil {
+		return "", fmt.Errorf("failed to decode schema content: %w", err)
+	}
+
+	return schemaContent, nil
 }
 
 // ValidateJSON validates a JSON document against a schema from the policy repo
 func ValidateJSON(data []byte, schemaName string) error {
-	cfg, err := config.Load()
+	schemaContent, err := fetchSchemaContent(schemaName)
 	if err != nil {
-		return fmt.Errorf("failed to load config: %w", err)
+		return err
 	}
 
-	// Get GitHub client
-	client, err := getGitHubClient()
-	if err != nil {
-		return fmt.Errorf("failed to create GitHub client: %w", err)
-	}
-
-	// Construct the raw GitHub URL for the schema
-	schemaURL := fmt.Sprintf("%s/%s/%s/%s/schemas/%s",
-		schemaBaseURL,
-		cfg.PolicyRepo.Owner,
-		cfg.PolicyRepo.Name,
-		cfg.PolicyRepo.Ref,
-		schemaName,
-	)
-
-	log.Printf("Fetching schema from: %s", schemaURL)
-
-	// Create request with authentication
-	req, err := http.NewRequest("GET", schemaURL, nil)
-	if err != nil {
-		return fmt.Errorf("failed to create request: %w", err)
-	}
-
-	// Use the client's HTTP client which has auth configured
-	resp, err := client.Client().Do(req)
-	if err != nil {
-		return fmt.Errorf("failed to fetch schema: %w", err)
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("failed to fetch schema, status code: %d, url: %s", resp.StatusCode, schemaURL)
-	}
-
-	schemaBytes, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return fmt.Errorf("failed to read schema: %w", err)
-	}
-
-	// Create schema loaders for the full document
-	schemaLoader := gojsonschema.NewBytesLoader(schemaBytes)
+	// Create schema loaders
+	schemaLoader := gojsonschema.NewStringLoader(schemaContent)
 	documentLoader := gojsonschema.NewBytesLoader(data)
 
 	// Validate

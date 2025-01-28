@@ -11,11 +11,19 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func setupMockSchemaServer(t *testing.T) *httptest.Server {
-	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+func setupTestEnv(t *testing.T) (*httptest.Server, func()) {
+	// save original values
+	originalSchemaBaseURL := schemaBaseURL
+	originalEnvVars := map[string]string{
+		"SCHEMA_BASE_URL": os.Getenv("SCHEMA_BASE_URL"),
+		"GITHUB_TOKEN":    os.Getenv("GITHUB_TOKEN"),
+	}
+
+	// set up mock server
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var schema string
 		switch r.URL.Path {
-		case "/liatrio/demo-gh-autogov-policy-library/v0.8.0/schemas/metadata.json":
+		case "/schemas/metadata.json":
 			schema = `{
 				"$schema": "http://json-schema.org/draft-07/schema#",
 				"type": "object",
@@ -167,7 +175,7 @@ func setupMockSchemaServer(t *testing.T) *httptest.Server {
 				},
 				"required": ["_type", "subject", "predicateType", "predicate"]
 			}`
-		case "/liatrio/demo-gh-autogov-policy-library/v0.8.0/schemas/dependency-vulnerability.json":
+		case "/schemas/dependency-vulnerability.json":
 			schema = `{
 				"$schema": "http://json-schema.org/draft-07/schema#",
 				"type": "object",
@@ -252,20 +260,31 @@ func setupMockSchemaServer(t *testing.T) *httptest.Server {
 		w.Header().Set("Content-Type", "application/json")
 		fmt.Fprintln(w, schema)
 	}))
+
+	// set up test environment
+	schemaBaseURL = server.URL
+	os.Setenv("SCHEMA_BASE_URL", server.URL)
+	os.Setenv("GITHUB_TOKEN", "test-token")
+
+	cleanup := func() {
+		server.Close()
+		// restore original values
+		schemaBaseURL = originalSchemaBaseURL
+		for key, value := range originalEnvVars {
+			if value == "" {
+				os.Unsetenv(key)
+			} else {
+				os.Setenv(key, value)
+			}
+		}
+	}
+
+	return server, cleanup
 }
 
 func TestValidateMetadata(t *testing.T) {
-	mockServer := setupMockSchemaServer(t)
-	defer mockServer.Close()
-
-	// Set up test environment
-	os.Setenv("POLICY_REPO_OWNER", "liatrio")
-	os.Setenv("POLICY_REPO_NAME", "demo-gh-autogov-policy-library")
-	os.Setenv("POLICY_VERSION", "v0.8.0")
-	os.Setenv("GITHUB_TOKEN", "test-token")
-
-	// Use mock server URL
-	setSchemaBaseURL(mockServer.URL)
+	_, cleanup := setupTestEnv(t)
+	defer cleanup()
 
 	t.Run("validates valid metadata", func(t *testing.T) {
 		validMetadata := []byte(`{
@@ -361,17 +380,8 @@ func TestValidateMetadata(t *testing.T) {
 }
 
 func TestValidateDepscan(t *testing.T) {
-	mockServer := setupMockSchemaServer(t)
-	defer mockServer.Close()
-
-	// Set up test environment
-	os.Setenv("POLICY_REPO_OWNER", "liatrio")
-	os.Setenv("POLICY_REPO_NAME", "demo-gh-autogov-policy-library")
-	os.Setenv("POLICY_VERSION", "v0.8.0")
-	os.Setenv("GITHUB_TOKEN", "test-token")
-
-	// Use mock server URL
-	setSchemaBaseURL(mockServer.URL)
+	_, cleanup := setupTestEnv(t)
+	defer cleanup()
 
 	t.Run("validates valid depscan", func(t *testing.T) {
 		validDepscan := []byte(`{
