@@ -1,7 +1,6 @@
 package validation
 
 import (
-	"encoding/json"
 	"fmt"
 	"io"
 	"log"
@@ -76,31 +75,9 @@ func ValidateJSON(data []byte, schemaName string) error {
 		return fmt.Errorf("failed to read schema: %w", err)
 	}
 
-	// Parse the JSON document to extract predicate
-	var doc map[string]interface{}
-	if err := json.Unmarshal(data, &doc); err != nil {
-		return fmt.Errorf("invalid JSON document: %w", err)
-	}
-
-	predicate, ok := doc["predicate"].(map[string]interface{})
-	if !ok {
-		return fmt.Errorf("document does not contain a predicate field")
-	}
-
-	// Parse the schema to extract predicate schema
-	var schema map[string]interface{}
-	if err := json.Unmarshal(schemaBytes, &schema); err != nil {
-		return fmt.Errorf("invalid schema JSON: %w", err)
-	}
-
-	predicateSchema, ok := schema["properties"].(map[string]interface{})["predicate"].(map[string]interface{})
-	if !ok {
-		return fmt.Errorf("schema does not contain a predicate definition")
-	}
-
-	// Create schema loaders for just the predicate portions
-	schemaLoader := gojsonschema.NewGoLoader(predicateSchema)
-	documentLoader := gojsonschema.NewGoLoader(predicate)
+	// Create schema loaders for the full document
+	schemaLoader := gojsonschema.NewBytesLoader(schemaBytes)
+	documentLoader := gojsonschema.NewBytesLoader(data)
 
 	// Validate
 	result, err := gojsonschema.Validate(schemaLoader, documentLoader)
@@ -113,18 +90,18 @@ func ValidateJSON(data []byte, schemaName string) error {
 		for _, err := range result.Errors() {
 			errors = append(errors, err.String())
 		}
-		return fmt.Errorf("predicate validation failed: %v", errors)
+		return fmt.Errorf("validation failed: %v", errors)
 	}
 
 	return nil
 }
 
-// ValidateMetadata validates a metadata predicate against the schema
+// ValidateMetadata validates a metadata attestation against the schema
 func ValidateMetadata(data []byte) error {
 	return ValidateJSON(data, "metadata.json")
 }
 
-// ValidateDepscan validates a dependency scan predicate against the schema
+// ValidateDepscan validates a dependency scan attestation against the schema
 func ValidateDepscan(data []byte) error {
 	return ValidateJSON(data, "dependency-vulnerability.json")
 }

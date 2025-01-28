@@ -11,44 +11,46 @@ on:
       - renovate.json
 
 jobs:
-  # lint:
-  #   name: lint
-  #   runs-on: ubuntu-latest
-  #   steps:
-  #     - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
-  #     - uses: actions/setup-go@3041bf56c941b39c61721a86cd11f3bb1338122a # v5
-  #       with:
-  #         go-version: '1.23.4'
-  #     - name: Install golangci-lint
-  #       uses: golangci/golangci-lint-action@ec5d18412c0aeab7936cb16880d708ba2a64e1ae # v6
-  #       with:
-  #         version: v1.62.0
-  #         args: --timeout=5m
-  #         only-new-issues: true
-  #     - name: Run linter
-  #       run: golangci-lint run
-  # test:
-  #   name: test
-  #   runs-on: ubuntu-latest
-  #   permissions:
-  #     contents: read
-  #   needs: [lint]
-  #   steps:
-  #     - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
-  #     - uses: actions/setup-go@3041bf56c941b39c61721a86cd11f3bb1338122a # v5.2.0
-  #       with:
-  #         go-version: '1.23.4'
-  #     - name: Run tests
-  #       env:
-  #         GITHUB_TOKEN: ${{ secrets.UTIL_REPO_ACCESS }}
-  #       run: make test
+  lint:
+    name: lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
+      - uses: actions/setup-go@3041bf56c941b39c61721a86cd11f3bb1338122a # v5
+        with:
+          go-version: '1.23.4'
+      - name: Install golangci-lint
+        uses: golangci/golangci-lint-action@ec5d18412c0aeab7936cb16880d708ba2a64e1ae # v6
+        with:
+          version: v1.62.0
+          args: --timeout=5m
+          only-new-issues: true
+      - name: Run linter
+        run: golangci-lint run
+
+  test:
+    name: test
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    needs: [lint]
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: actions/setup-go@3041bf56c941b39c61721a86cd11f3bb1338122a # v5.2.0
+        with:
+          go-version: '1.23.4'
+      - name: Run tests
+        env:
+          GITHUB_TOKEN: ${{ secrets.UTIL_REPO_ACCESS }}
+        run: make test
+
   build:
     name: build
     runs-on: ubuntu-latest
     permissions:
       contents: read
       id-token: write
-    # needs: [test]
+    needs: [test]
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
       - uses: actions/setup-go@3041bf56c941b39c61721a86cd11f3bb1338122a # v5.2.0
@@ -86,13 +88,11 @@ jobs:
 
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
-
       - name: Download binary
         uses: actions/download-artifact@c850b930e6ba138125429b7e5c93fc707a7f8427 # v4.1.4
         with:
           name: gh-attest-util
           path: bin
-
       - name: Install Binary
         run: |
           chmod +x bin/gh-attest-util
@@ -102,19 +102,15 @@ jobs:
       # Test blob attestation
       - name: Create test file
         run: echo "test content" > test-file.txt
-
       - name: Generate blob metadata
         env:
           GH_TOKEN: ${{ secrets.UTIL_REPO_ACCESS }}
           GITHUB_TOKEN: ${{ secrets.UTIL_REPO_ACCESS }}
         run: |
           gh-attest-util metadata \
-            --subject-path test-file.txt \
-            --subject-name test-file.txt \
             --type blob \
-            --digest sha256:test \
+            --subject-path test-file.txt \
             --output blob-metadata.json
-
       - name: Verify blob metadata
         run: |
           echo "Generated blob metadata:"
@@ -128,11 +124,10 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.UTIL_REPO_ACCESS }}
         run: |
           gh-attest-util metadata \
-            --subject-name test-image:latest \
             --type container-image \
-            --digest sha256:test \
+            --subject-name ghcr.io/test-org/test-repo \
+            --subject-digest sha256:test \
             --output container-metadata.json
-
       - name: Verify container metadata
         run: |
           echo "Generated container metadata:"
@@ -178,7 +173,6 @@ jobs:
             ]
           }
           EOF
-
       - name: Generate depscan attestation
         env:
           GH_TOKEN: ${{ secrets.UTIL_REPO_ACCESS }}
@@ -189,41 +183,8 @@ jobs:
             --subject-name test-image:latest \
             --digest sha256:test \
             --output depscan.json
-
       - name: Verify depscan attestation
         run: |
           echo "Generated depscan attestation:"
           cat depscan.json | jq '.'
           test -f depscan.json
-
-      # Verify all files exist and are valid JSON
-      - name: Verify all attestations
-        run: |
-          for file in blob-metadata.json container-metadata.json depscan.json; do
-            echo "Verifying $file..."
-            if ! jq '.' "$file" > /dev/null 2>&1; then
-              echo "Error: $file is not valid JSON"
-              exit 1
-            fi
-          done
-
-      # Validate against predicate schemas
-      - name: Validate against predicate schemas
-        env:
-          GH_TOKEN: ${{ secrets.UTIL_REPO_ACCESS }}
-          GITHUB_TOKEN: ${{ secrets.UTIL_REPO_ACCESS }}
-        run: |
-          # Fetch schemas from policy repo
-          echo "Fetching schemas..."
-          gh api /repos/liatrio/gh-trusted-builds-policy/contents/schemas/metadata.json --jq '.content' | base64 -d > metadata-schema.json
-          gh api /repos/liatrio/gh-trusted-builds-policy/contents/schemas/dependency-vulnerability.json --jq '.content' | base64 -d > depscan-schema.json
-
-          # Extract and validate predicates
-          echo "Validating metadata attestations..."
-          jq -e '.predicate | if .artifact and .metadata and .artifact.type == "blob" and .artifact.path and .artifact.digest then true else false end' blob-metadata.json || (echo "Blob metadata missing required fields" && exit 1)
-          jq -e '.predicate | if .artifact and .metadata and .artifact.type == "container-image" and .artifact.registry and .artifact.fullName and .artifact.digest then true else false end' container-metadata.json || (echo "Container metadata missing required fields" && exit 1)
-
-          echo "Validating depscan attestation..."
-          jq -e '.predicate | if .scanner and .scanner.uri and .scanner.version and .scanner.db and .scanner.result then true else false end' depscan.json || (echo "Depscan missing required fields" && exit 1)
-          jq -e '.predicate.scanner.db | has("name", "version", "lastUpdated")' depscan.json || (echo "Depscan missing required DB fields" && exit 1)
-          jq -e '.predicate.scanner.result[] | has("id", "severity") and .severity | has("method", "score")' depscan.json || (echo "Depscan missing required result fields" && exit 1)

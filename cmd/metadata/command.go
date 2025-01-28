@@ -3,11 +3,9 @@ package metadata
 import (
 	"fmt"
 	"os"
-	"path/filepath"
 	"time"
 
-	"gh-attest-util/internal/attestation/metadata"
-	"gh-attest-util/internal/github"
+	metadata "gh-attest-util/internal/attestation/metadata"
 
 	"github.com/spf13/cobra"
 )
@@ -15,76 +13,98 @@ import (
 func NewCommand() *cobra.Command {
 	var opts metadata.Options
 	var outputFile string
-	var buildType string
+	var subjectName string
+	var subjectPath string
+	var subjectDigest string
+	var artifactType string
 
 	cmd := &cobra.Command{
 		Use:   "metadata",
 		Short: "Generate metadata predicate",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			ctx, err := github.LoadFromEnv()
-			if err != nil {
-				return fmt.Errorf("failed to get GitHub context: %w", err)
+			// Set repository data
+			opts.Repository = os.Getenv("GITHUB_REPOSITORY")
+			opts.RepositoryID = os.Getenv("GITHUB_REPOSITORY_ID")
+			opts.GitHubServerURL = os.Getenv("GITHUB_SERVER_URL")
+
+			// Set owner data
+			opts.Owner = os.Getenv("GITHUB_REPOSITORY_OWNER")
+			opts.OwnerID = os.Getenv("GITHUB_REPOSITORY_OWNER_ID")
+
+			// Set runner data
+			opts.OS = os.Getenv("RUNNER_OS")
+			opts.Arch = os.Getenv("RUNNER_ARCH")
+			opts.Environment = os.Getenv("RUNNER_ENVIRONMENT")
+
+			// Set workflow data
+			opts.WorkflowRefPath = os.Getenv("GITHUB_WORKFLOW_REF")
+			opts.Branch = os.Getenv("GITHUB_REF_NAME")
+			opts.Event = os.Getenv("GITHUB_EVENT_NAME")
+
+			// Set job data
+			opts.RunNumber = os.Getenv("GITHUB_RUN_NUMBER")
+			opts.RunID = os.Getenv("GITHUB_RUN_ID")
+			opts.Status = os.Getenv("GITHUB_JOB_STATUS")
+			opts.TriggeredBy = os.Getenv("GITHUB_ACTOR")
+			if startedAt, err := time.Parse(time.RFC3339, os.Getenv("GITHUB_JOB_STARTED_AT")); err == nil {
+				opts.StartedAt = startedAt
+			}
+			if completedAt, err := time.Parse(time.RFC3339, os.Getenv("GITHUB_JOB_COMPLETED_AT")); err == nil {
+				opts.CompletedAt = completedAt
 			}
 
-			now := time.Now().UTC()
-			shortSHA := ctx.SHA
-			if len(shortSHA) > 7 && shortSHA != "test-sha" {
-				shortSHA = shortSHA[:7]
+			// Set commit data
+			opts.SHA = os.Getenv("GITHUB_SHA")
+			if timestamp, err := time.Parse(time.RFC3339, os.Getenv("GITHUB_EVENT_TIMESTAMP")); err == nil {
+				opts.Timestamp = timestamp
 			}
 
-			// Set artifact details
-			opts.Version = fmt.Sprintf("%s-%s", shortSHA, ctx.RunNumber)
-			opts.Created = now
-			opts.Type = metadata.ArtifactTypeContainerImage
-			if buildType == "blob" {
+			// Set organization data
+			opts.OrgName = os.Getenv("GITHUB_ORGANIZATION")
+
+			// Set compliance data
+			opts.PolicyRef = os.Getenv("POLICY_REF")
+			if controlIds := os.Getenv("CONTROL_IDS"); controlIds != "" {
+				opts.ControlIds = []string{controlIds}
+			}
+
+			// Set security data
+			opts.Permissions = map[string]string{
+				"id-token":     "write",
+				"attestations": "write",
+				"contents":     "read",
+				"packages":     "read",
+			}
+
+			// Set artifact data
+			opts.Created = time.Now()
+			opts.Version = fmt.Sprintf("%s-%s", opts.SHA, opts.RunNumber)
+
+			// Handle artifact type-specific fields
+			switch artifactType {
+			case "container-image":
+				opts.Type = metadata.ArtifactTypeContainerImage
+				if subjectName == "" {
+					return fmt.Errorf("subject-name is required for container-image type")
+				}
+				if subjectDigest == "" {
+					return fmt.Errorf("subject-digest is required for container-image type")
+				}
+				opts.FullName = subjectName
+				opts.Digest = subjectDigest
+			case "blob":
 				opts.Type = metadata.ArtifactTypeBlob
-			}
-
-			// Set repository details
-			opts.Repository = ctx.Repository
-			opts.GitHubServerURL = ctx.ServerURL
-
-			// Set owner details
-			opts.Owner = ctx.RepositoryOwner
-
-			// Set runner details
-			opts.OS = ctx.Runner.OS
-			opts.Name = ctx.Runner.Environment
-
-			// Set workflow details
-			opts.WorkflowName = filepath.Base(ctx.WorkflowRef)
-			opts.WorkflowRefPath = ctx.WorkflowRef
-			opts.RunID = ctx.RunID
-
-			// Set job details
-			opts.JobName = ctx.JobStatus
-
-			// Set commit details
-			opts.SHA = ctx.SHA
-			opts.Message = ctx.Event.HeadCommit.Timestamp
-			opts.Author = ctx.Actor
-			opts.URL = fmt.Sprintf("%s/%s/commit/%s", ctx.ServerURL, ctx.Repository, ctx.SHA)
-
-			if buildType == "blob" {
-				if opts.SubjectPath == "" {
+				if subjectPath == "" {
 					return fmt.Errorf("subject-path is required for blob type")
 				}
-				subjectPath := opts.SubjectPath
-				if _, err := os.Stat(subjectPath); err != nil {
-					return fmt.Errorf("failed to read subject file: %w", err)
-				}
 				opts.SubjectPath = subjectPath
-				// If subject-name is not provided for blobs, use the filename
-				if opts.SubjectName == "" {
-					opts.SubjectName = filepath.Base(subjectPath)
-				}
-			} else if opts.SubjectName == "" {
-				return fmt.Errorf("subject-name is required for container-image type")
+			default:
+				return fmt.Errorf("invalid artifact type: %s", artifactType)
 			}
 
 			m, err := metadata.NewFromOptions(opts)
 			if err != nil {
-				return fmt.Errorf("failed to generate metadata: %w", err)
+				return fmt.Errorf("failed to create metadata: %w", err)
 			}
 
 			output, err := m.Generate()
@@ -107,12 +127,11 @@ func NewCommand() *cobra.Command {
 	}
 
 	flags := cmd.Flags()
-	flags.StringVar(&opts.SubjectName, "subject-name", "", "Name of the subject being attested")
-	flags.StringVar(&opts.SubjectPath, "subject-path", "", "Path to the subject file (required for blob type)")
-	flags.StringVar(&opts.Digest, "digest", "", "Digest of the subject being attested")
-	flags.StringVar(&buildType, "type", "container-image", "Type of build (container-image or blob)")
-	flags.StringVar(&outputFile, "output", "", "Output file path (defaults to stdout)")
-	cobra.CheckErr(cmd.MarkFlagRequired("digest"))
+	flags.StringVar(&outputFile, "output", "", "Output file")
+	flags.StringVar(&subjectPath, "subject-path", "", "Path to the subject file (required for blob type)")
+	flags.StringVar(&subjectName, "subject-name", "", "Name of the subject being attested (required for container-image type)")
+	flags.StringVar(&subjectDigest, "subject-digest", "", "SHA256 digest of the subject (required for container-image type)")
+	flags.StringVar(&artifactType, "type", "container-image", "Type of build (container-image or blob)")
 
 	return cmd
 }

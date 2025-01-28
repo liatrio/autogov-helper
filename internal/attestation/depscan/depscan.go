@@ -11,7 +11,7 @@ import (
 
 const PredicateTypeURI = "https://in-toto.io/attestation/vulns/v0.2"
 
-// DependencyScan struct matches predicates/depscan.json
+// DependencyScan struct represents just the predicate portion of the attestation
 type DependencyScan struct {
 	Scanner struct {
 		URI     string `json:"uri"`

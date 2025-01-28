@@ -15,7 +15,7 @@ const (
 	ArtifactTypeContainerImage ArtifactType = "container-image"
 )
 
-// Metadata struct matches predicates/metadata.json
+// Metadata struct represents just the predicate portion of the attestation
 type Metadata struct {
 	Artifact struct {
 		Version  string `json:"version"`
@@ -26,78 +26,101 @@ type Metadata struct {
 		Digest   string `json:"digest,omitempty"`
 		Path     string `json:"path,omitempty"`
 	} `json:"artifact"`
-	Metadata struct {
-		BuildType      string `json:"buildType"`
-		PermissionType string `json:"permissionType"`
-		Repository     struct {
-			Name  string `json:"name"`
-			Owner string `json:"owner"`
-			URL   string `json:"url"`
-		} `json:"repository"`
-		Workflow struct {
-			Name string `json:"name"`
-			Ref  string `json:"ref"`
-			ID   string `json:"id"`
-		} `json:"workflow"`
-		Job struct {
-			Name string `json:"name"`
-			ID   string `json:"id"`
-		} `json:"job"`
-		Runner struct {
-			Name string `json:"name"`
-			OS   string `json:"os"`
-		} `json:"runner"`
-		Commit struct {
-			SHA     string `json:"sha"`
-			Message string `json:"message"`
-			Author  string `json:"author"`
-			URL     string `json:"url"`
-		} `json:"commit"`
-	} `json:"metadata"`
+	RepositoryData struct {
+		Repository      string `json:"repository"`
+		RepositoryID    string `json:"repositoryId"`
+		GitHubServerURL string `json:"githubServerURL"`
+	} `json:"repositoryData"`
+	OwnerData struct {
+		Owner   string `json:"owner"`
+		OwnerID string `json:"ownerId"`
+	} `json:"ownerData"`
+	RunnerData struct {
+		OS          string `json:"os"`
+		Arch        string `json:"arch"`
+		Environment string `json:"environment"`
+	} `json:"runnerData"`
+	WorkflowData struct {
+		WorkflowRefPath string         `json:"workflowRefPath"`
+		Inputs          map[string]any `json:"inputs"`
+		Branch          string         `json:"branch"`
+		Event           string         `json:"event"`
+	} `json:"workflowData"`
+	JobData struct {
+		RunNumber   string `json:"runNumber"`
+		RunID       string `json:"runId"`
+		Status      string `json:"status"`
+		TriggeredBy string `json:"triggeredBy"`
+		StartedAt   string `json:"startedAt"`
+		CompletedAt string `json:"completedAt"`
+	} `json:"jobData"`
+	CommitData struct {
+		SHA       string `json:"sha"`
+		Timestamp string `json:"timestamp"`
+	} `json:"commitData"`
+	Organization struct {
+		Name string `json:"name"`
+	} `json:"organization"`
+	Compliance struct {
+		PolicyRef  string   `json:"policyRef"`
+		ControlIds []string `json:"controlIds"`
+	} `json:"compliance"`
+	Security struct {
+		Permissions map[string]string `json:"permissions"`
+	} `json:"security"`
 }
 
 type Options struct {
-	// Subject details
-	SubjectName string
+	// Artifact fields
+	Version     string
+	Created     time.Time
+	Type        ArtifactType
+	Registry    string
+	FullName    string
 	SubjectPath string
 	Digest      string
 
-	// Artifact details
-	Version  string
-	Created  time.Time
-	Type     ArtifactType
-	Registry string // only for container images
-	FullName string // only for container images
-	Path     string // only for blobs
-
-	// Repository details
+	// Repository fields
 	Repository      string
+	RepositoryID    string
 	GitHubServerURL string
 
-	// Owner details
-	Owner string
+	// Owner fields
+	Owner   string
+	OwnerID string
 
-	// Runner details
-	OS   string
-	Name string
+	// Runner fields
+	OS          string
+	Arch        string
+	Environment string
 
-	// Build details
-	BuildType      string
-	PermissionType string
-
-	// Workflow details
-	WorkflowName    string
+	// Workflow fields
 	WorkflowRefPath string
-	RunID           string
+	Inputs          map[string]any
+	Branch          string
+	Event           string
 
-	// Job details
-	JobName string
+	// Job fields
+	RunNumber   string
+	RunID       string
+	Status      string
+	TriggeredBy string
+	StartedAt   time.Time
+	CompletedAt time.Time
 
-	// Commit details
-	SHA     string
-	Message string
-	Author  string
-	URL     string
+	// Commit fields
+	SHA       string
+	Timestamp time.Time
+
+	// Organization fields
+	OrgName string
+
+	// Compliance fields
+	PolicyRef  string
+	ControlIds []string
+
+	// Security fields
+	Permissions map[string]string
 }
 
 func (m *Metadata) Generate() ([]byte, error) {
@@ -111,7 +134,7 @@ func (m *Metadata) Generate() ([]byte, error) {
 func NewFromOptions(opts Options) (*Metadata, error) {
 	m := &Metadata{}
 
-	// Set artifact data
+	// Set artifact fields
 	m.Artifact.Version = opts.Version
 	m.Artifact.Created = opts.Created.Format(time.RFC3339)
 	m.Artifact.Type = string(opts.Type)
@@ -126,33 +149,47 @@ func NewFromOptions(opts Options) (*Metadata, error) {
 		m.Artifact.Digest = opts.Digest
 	}
 
-	// Set metadata
-	m.Metadata.BuildType = "github-workflow"
-	m.Metadata.PermissionType = "github-workflow"
-
 	// Set repository data
-	m.Metadata.Repository.Name = opts.Repository
-	m.Metadata.Repository.Owner = opts.Owner
-	m.Metadata.Repository.URL = opts.GitHubServerURL
+	m.RepositoryData.Repository = opts.Repository
+	m.RepositoryData.RepositoryID = opts.RepositoryID
+	m.RepositoryData.GitHubServerURL = opts.GitHubServerURL
 
-	// Set workflow data
-	m.Metadata.Workflow.Name = opts.WorkflowName
-	m.Metadata.Workflow.Ref = opts.WorkflowRefPath
-	m.Metadata.Workflow.ID = opts.RunID
-
-	// Set job data
-	m.Metadata.Job.Name = opts.JobName
-	m.Metadata.Job.ID = opts.RunID
+	// Set owner data
+	m.OwnerData.Owner = opts.Owner
+	m.OwnerData.OwnerID = opts.OwnerID
 
 	// Set runner data
-	m.Metadata.Runner.Name = opts.Name
-	m.Metadata.Runner.OS = opts.OS
+	m.RunnerData.OS = opts.OS
+	m.RunnerData.Arch = opts.Arch
+	m.RunnerData.Environment = opts.Environment
+
+	// Set workflow data
+	m.WorkflowData.WorkflowRefPath = opts.WorkflowRefPath
+	m.WorkflowData.Inputs = opts.Inputs
+	m.WorkflowData.Branch = opts.Branch
+	m.WorkflowData.Event = opts.Event
+
+	// Set job data
+	m.JobData.RunNumber = opts.RunNumber
+	m.JobData.RunID = opts.RunID
+	m.JobData.Status = opts.Status
+	m.JobData.TriggeredBy = opts.TriggeredBy
+	m.JobData.StartedAt = opts.StartedAt.Format(time.RFC3339)
+	m.JobData.CompletedAt = opts.CompletedAt.Format(time.RFC3339)
 
 	// Set commit data
-	m.Metadata.Commit.SHA = opts.SHA
-	m.Metadata.Commit.Message = opts.Message
-	m.Metadata.Commit.Author = opts.Author
-	m.Metadata.Commit.URL = opts.URL
+	m.CommitData.SHA = opts.SHA
+	m.CommitData.Timestamp = opts.Timestamp.Format(time.RFC3339)
+
+	// Set organization data
+	m.Organization.Name = opts.OrgName
+
+	// Set compliance data
+	m.Compliance.PolicyRef = opts.PolicyRef
+	m.Compliance.ControlIds = opts.ControlIds
+
+	// Set security data
+	m.Security.Permissions = opts.Permissions
 
 	return m, nil
 }
