@@ -68,24 +68,165 @@ jobs:
         run: |
           sudo cp bin/gh-attest-util /usr/local/bin/
           gh-attest-util --help
-      - run: echo "test content" > test-file.txt
-      - run: |
-          gh-attest-util metadata \
-            --subject-path test-file.txt  \
-            --subject-name test-file.txt  \
-            --type blob  \
-            --digest sha256:test  \
-            --output metadata.json
-        env:
-          GH_TOKEN: ${{ secrets.UTIL_REPO_ACCESS }}
-          GITHUB_TOKEN: ${{ secrets.UTIL_REPO_ACCESS }}
-      - name: Display Generated File
-        run: |
-          echo "Generated metadata file contents:"
-          cat metadata.json | jq '.'
 
       - name: Upload binary
         uses: actions/upload-artifact@65c4c4a1ddee5b72f698fdd19549f0f0fb45cf08 # v4.6.0
         with:
           name: gh-attest-util
           path: bin/gh-attest-util
+
+  test-attestations:
+    name: test-attestations
+    needs: [build]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
+
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - name: Download binary
+        uses: actions/download-artifact@c850b930e6ba138125429b7e5c93fc707a7f8427 # v4.1.4
+        with:
+          name: gh-attest-util
+          path: bin
+
+      - name: Install Binary
+        run: |
+          chmod +x bin/gh-attest-util
+          sudo cp bin/gh-attest-util /usr/local/bin/
+          gh-attest-util --help
+
+      # Test blob attestation
+      - name: Create test file
+        run: echo "test content" > test-file.txt
+
+      - name: Generate blob metadata
+        env:
+          GH_TOKEN: ${{ secrets.UTIL_REPO_ACCESS }}
+          GITHUB_TOKEN: ${{ secrets.UTIL_REPO_ACCESS }}
+        run: |
+          gh-attest-util metadata \
+            --subject-path test-file.txt \
+            --subject-name test-file.txt \
+            --type blob \
+            --digest sha256:test \
+            --output blob-metadata.json
+
+      - name: Verify blob metadata
+        run: |
+          echo "Generated blob metadata:"
+          cat blob-metadata.json | jq '.'
+          test -f blob-metadata.json
+
+      # Test container image attestation
+      - name: Generate container metadata
+        env:
+          GH_TOKEN: ${{ secrets.UTIL_REPO_ACCESS }}
+          GITHUB_TOKEN: ${{ secrets.UTIL_REPO_ACCESS }}
+        run: |
+          gh-attest-util metadata \
+            --subject-name test-image:latest \
+            --type container-image \
+            --digest sha256:test \
+            --output container-metadata.json
+
+      - name: Verify container metadata
+        run: |
+          echo "Generated container metadata:"
+          cat container-metadata.json | jq '.'
+          test -f container-metadata.json
+
+      # Test dependency scan attestation
+      - name: Create test grype results
+        run: |
+          cat << EOF > results.json
+          {
+            "bomFormat": "CycloneDX",
+            "specVersion": "1.5",
+            "version": 1,
+            "metadata": {
+              "timestamp": "2024-03-14T12:00:00Z",
+              "tools": [
+                {
+                  "vendor": "anchore",
+                  "name": "grype",
+                  "version": "0.74.7"
+                }
+              ]
+            },
+            "vulnerabilities": [
+              {
+                "id": "CVE-2024-1234",
+                "source": {
+                  "name": "nvd",
+                  "url": "https://nvd.nist.gov"
+                },
+                "ratings": [
+                  {
+                    "source": {
+                      "name": "nvd"
+                    },
+                    "score": 7.5,
+                    "severity": "HIGH",
+                    "method": "CVSSv3"
+                  }
+                ]
+              }
+            ]
+          }
+          EOF
+
+      - name: Generate depscan attestation
+        env:
+          GH_TOKEN: ${{ secrets.UTIL_REPO_ACCESS }}
+          GITHUB_TOKEN: ${{ secrets.UTIL_REPO_ACCESS }}
+        run: |
+          gh-attest-util depscan \
+            --results-path results.json \
+            --subject-name test-image:latest \
+            --digest sha256:test \
+            --output depscan.json
+
+      - name: Verify depscan attestation
+        run: |
+          echo "Generated depscan attestation:"
+          cat depscan.json | jq '.'
+          test -f depscan.json
+
+      # Verify all files exist and are valid JSON
+      - name: Verify all attestations
+        run: |
+          for file in blob-metadata.json container-metadata.json depscan.json; do
+            echo "Verifying $file..."
+            if ! jq '.' "$file" > /dev/null 2>&1; then
+              echo "Error: $file is not valid JSON"
+              exit 1
+            fi
+          done
+
+      # Validate against predicate schemas
+      - name: Validate against predicate schemas
+        env:
+          GH_TOKEN: ${{ secrets.UTIL_REPO_ACCESS }}
+          GITHUB_TOKEN: ${{ secrets.UTIL_REPO_ACCESS }}
+        run: |
+          # Validate using our built-in validation
+          echo "Validating metadata attestations..."
+          gh-attest-util validate metadata blob-metadata.json || (echo "Blob metadata validation failed" && exit 1)
+          gh-attest-util validate metadata container-metadata.json || (echo "Container metadata validation failed" && exit 1)
+
+          echo "Validating depscan attestation..."
+          gh-attest-util validate depscan depscan.json || (echo "Depscan validation failed" && exit 1)
+
+          # Additional type-specific validations
+          echo "Validating type-specific fields..."
+          # Blob metadata
+          jq -e '.predicate.artifact.type == "blob" and .predicate.artifact.path and .predicate.artifact.digest' blob-metadata.json || (echo "Blob metadata missing required artifact fields" && exit 1)
+          # Container metadata
+          jq -e '.predicate.artifact.type == "container-image" and .predicate.artifact.registry and .predicate.artifact.fullName and .predicate.artifact.digest' container-metadata.json || (echo "Container metadata missing required artifact fields" && exit 1)
+          # Depscan
+          jq -e '.predicate.scanner.db | has("name", "version", "lastUpdated")' depscan.json || (echo "Depscan missing required DB fields" && exit 1)
+          jq -e '.predicate.scanner.result[] | has("id", "severity") and .severity | has("method", "score")' depscan.json || (echo "Depscan missing required result fields" && exit 1)
