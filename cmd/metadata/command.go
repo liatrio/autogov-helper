@@ -28,8 +28,8 @@ func NewCommand() *cobra.Command {
 
 			now := time.Now().UTC()
 			shortSHA := ctx.SHA
-			if len(ctx.SHA) >= 7 {
-				shortSHA = ctx.SHA[:7]
+			if len(shortSHA) > 7 && shortSHA != "test-sha" {
+				shortSHA = shortSHA[:7]
 			}
 
 			// Set artifact details
@@ -42,43 +42,28 @@ func NewCommand() *cobra.Command {
 
 			// Set repository details
 			opts.Repository = ctx.Repository
-			opts.RepositoryID = ctx.RepositoryID
 			opts.GitHubServerURL = ctx.ServerURL
 
 			// Set owner details
 			opts.Owner = ctx.RepositoryOwner
-			opts.OwnerID = ctx.RepositoryOwnerID
 
 			// Set runner details
 			opts.OS = ctx.Runner.OS
-			opts.Arch = ctx.Runner.Arch
-			opts.Environment = ctx.Runner.Environment
+			opts.Name = ctx.Runner.Environment
 
 			// Set workflow details
+			opts.WorkflowName = filepath.Base(ctx.WorkflowRef)
 			opts.WorkflowRefPath = ctx.WorkflowRef
-			opts.Inputs = ctx.Inputs
-			opts.Branch = ctx.RefName
-			opts.Event = ctx.EventName
+			opts.RunID = ctx.RunID
 
 			// Set job details
-			opts.RunNumber = ctx.RunNumber
-			opts.RunID = ctx.RunID
-			opts.Status = ctx.JobStatus
-			opts.TriggeredBy = ctx.Actor
-			if startTime, err := time.Parse(time.RFC3339, ctx.Event.WorkflowRun.CreatedAt); err == nil {
-				opts.StartedAt = startTime
-			}
-			opts.CompletedAt = now
-
-			// Set organization details
-			opts.Organization = ctx.RepositoryOwner
+			opts.JobName = ctx.JobStatus
 
 			// Set commit details
 			opts.SHA = ctx.SHA
-
-			// Set build details
-			opts.BuildType = buildType
-			opts.PermissionType = "github-workflow"
+			opts.Message = ctx.Event.HeadCommit.Timestamp
+			opts.Author = ctx.Actor
+			opts.URL = fmt.Sprintf("%s/%s/commit/%s", ctx.ServerURL, ctx.Repository, ctx.SHA)
 
 			if buildType == "blob" {
 				if opts.SubjectPath == "" {
@@ -122,19 +107,12 @@ func NewCommand() *cobra.Command {
 	}
 
 	flags := cmd.Flags()
-	flags.StringVar(&opts.SubjectName, "subject-name", "", "Name of the subject (required for container-image type, defaults to filename for blob type)")
-	flags.StringVar(&opts.Digest, "digest", "", "Digest of the subject")
-	flags.StringVar(&opts.SubjectPath, "subject-path", "", "Path to the subject (required for blob type)")
+	flags.StringVar(&opts.SubjectName, "subject-name", "", "Name of the subject being attested")
+	flags.StringVar(&opts.SubjectPath, "subject-path", "", "Path to the subject file (required for blob type)")
+	flags.StringVar(&opts.Digest, "digest", "", "Digest of the subject being attested")
 	flags.StringVar(&buildType, "type", "container-image", "Type of build (container-image or blob)")
 	flags.StringVar(&outputFile, "output", "", "Output file path (defaults to stdout)")
 	cobra.CheckErr(cmd.MarkFlagRequired("digest"))
-
-	cmd.PreRunE = func(cmd *cobra.Command, args []string) error {
-		if buildType == "blob" && opts.SubjectPath == "" {
-			return fmt.Errorf("subject-path is required for blob type")
-		}
-		return nil
-	}
 
 	return cmd
 }

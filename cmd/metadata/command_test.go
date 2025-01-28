@@ -1,4 +1,4 @@
-package metadata_test
+package metadata
 
 import (
 	"bytes"
@@ -6,106 +6,98 @@ import (
 	"os"
 	"testing"
 
-	"gh-attest-util/cmd/metadata"
-
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 func TestMetadataCommand(t *testing.T) {
-	t.Run("generates valid metadata", func(t *testing.T) {
-		os.Setenv("GITHUB_REPOSITORY", "test-repo")
-		os.Setenv("GITHUB_REPOSITORY_OWNER", "test-owner")
-		os.Setenv("GITHUB_REPOSITORY_ID", "123")
-		os.Setenv("GITHUB_SERVER_URL", "https://github.com")
-		os.Setenv("GITHUB_REPOSITORY_OWNER_ID", "456")
-		os.Setenv("GITHUB_WORKFLOW_REF", ".github/workflows/build.yml")
-		os.Setenv("GITHUB_REF_NAME", "main")
-		os.Setenv("GITHUB_EVENT_NAME", "push")
-		os.Setenv("GITHUB_SHA", "abc1234")
-		os.Setenv("GITHUB_RUN_NUMBER", "1")
-		os.Setenv("GITHUB_RUN_ID", "789")
-		os.Setenv("GITHUB_ACTOR", "test-user")
-		os.Setenv("GITHUB_JOB_STATUS", "success")
-		os.Setenv("RUNNER_OS", "Linux")
-		os.Setenv("RUNNER_ARCH", "X64")
-		os.Setenv("RUNNER_ENVIRONMENT", "github-hosted")
-		os.Setenv("POLICY_VERSION", "v0.8.0")
-		os.Setenv("GITHUB_TOKEN", os.Getenv("GH_TOKEN"))
+	// Set up environment variables
+	os.Setenv("GITHUB_REPOSITORY", "test-repo")
+	os.Setenv("GITHUB_REPOSITORY_OWNER", "test-owner")
+	os.Setenv("GITHUB_SERVER_URL", "https://github.com")
+	os.Setenv("GITHUB_SHA", "test-sha")
+	os.Setenv("GITHUB_RUN_ID", "test-run-id")
+	os.Setenv("GITHUB_RUN_NUMBER", "test-run-number")
+	os.Setenv("GITHUB_WORKFLOW_REF", "test-workflow-ref")
+	os.Setenv("GITHUB_JOB_STATUS", "test-job")
+	os.Setenv("GITHUB_ACTOR", "test-actor")
+	os.Setenv("RUNNER_OS", "test-os")
+	os.Setenv("RUNNER_ARCH", "test-arch")
+	os.Setenv("RUNNER_ENVIRONMENT", "test-runner")
 
-		// Set up test environment for compliance and security
-		os.Setenv("POLICY_REF", "https://github.com/liatrio/demo-gh-autogov-policy-library")
-		os.Setenv("CONTROL_IDS", "test-control")
-		os.Setenv("PERMISSIONS_ID_TOKEN", "write")
-		os.Setenv("PERMISSIONS_ATTESTATIONS", "write")
-		os.Setenv("PERMISSIONS_CONTENTS", "read")
-		os.Setenv("PERMISSIONS_PACKAGES", "read")
+	// Create a temporary file for testing
+	tmpFile, err := os.CreateTemp("", "test-*.txt")
+	require.NoError(t, err)
+	defer os.Remove(tmpFile.Name())
 
-		cmd := metadata.NewCommand()
-		var output bytes.Buffer
-		cmd.SetOut(&output)
+	// Test container image type
+	t.Run("container_image", func(t *testing.T) {
+		var buf bytes.Buffer
+		cmd := NewCommand()
+		cmd.SetOut(&buf)
 
 		cmd.SetArgs([]string{
-			"--subject-name", "test-image",
-			"--digest", "sha256:123",
+			"--subject-name", "test-subject",
+			"--digest", "test-digest",
 		})
 
-		err := cmd.Execute()
-		require.NoError(t, err)
+		require.NoError(t, cmd.Execute())
 
 		var result map[string]interface{}
-		err = json.Unmarshal(output.Bytes(), &result)
-		require.NoError(t, err)
+		require.NoError(t, json.Unmarshal(buf.Bytes(), &result))
 
-		subject := result["subject"].([]interface{})[0].(map[string]interface{})
-		assert.Equal(t, "test-image", subject["name"])
-		assert.Equal(t, "sha256:123", subject["digest"].(map[string]interface{})["sha256"])
-
-		predicate := result["predicate"].(map[string]interface{})
-
-		artifact := predicate["artifact"].(map[string]interface{})
+		// Verify artifact data
+		artifact := result["artifact"].(map[string]interface{})
+		assert.Equal(t, "test-sha-test-run-number", artifact["version"])
 		assert.Equal(t, "container-image", artifact["type"])
+		assert.Equal(t, "test-digest", artifact["digest"])
 
-		repositoryData := predicate["repositoryData"].(map[string]interface{})
-		assert.Equal(t, "test-repo", repositoryData["repository"])
-		assert.Equal(t, "123", repositoryData["repositoryId"])
-		assert.Equal(t, "https://github.com", repositoryData["githubServerURL"])
+		// Verify metadata
+		metadata := result["metadata"].(map[string]interface{})
+		repository := metadata["repository"].(map[string]interface{})
+		assert.Equal(t, "test-repo", repository["name"])
+		assert.Equal(t, "test-owner", repository["owner"])
+		assert.Equal(t, "https://github.com", repository["url"])
 
-		ownerData := predicate["ownerData"].(map[string]interface{})
-		assert.Equal(t, "test-owner", ownerData["owner"])
-		assert.Equal(t, "456", ownerData["ownerId"])
+		workflow := metadata["workflow"].(map[string]interface{})
+		assert.Equal(t, "test-workflow-ref", workflow["ref"])
+		assert.Equal(t, "test-run-id", workflow["id"])
 
-		runnerData := predicate["runnerData"].(map[string]interface{})
-		assert.Equal(t, "Linux", runnerData["os"])
-		assert.Equal(t, "X64", runnerData["arch"])
-		assert.Equal(t, "github-hosted", runnerData["environment"])
+		job := metadata["job"].(map[string]interface{})
+		assert.Equal(t, "test-job", job["name"])
+		assert.Equal(t, "test-run-id", job["id"])
 
-		workflowData := predicate["workflowData"].(map[string]interface{})
-		assert.Equal(t, ".github/workflows/build.yml", workflowData["workflowRefPath"])
-		assert.Equal(t, "main", workflowData["branch"])
-		assert.Equal(t, "push", workflowData["event"])
+		runner := metadata["runner"].(map[string]interface{})
+		assert.Equal(t, "test-runner", runner["name"])
+		assert.Equal(t, "test-os", runner["os"])
 
-		jobData := predicate["jobData"].(map[string]interface{})
-		assert.Equal(t, "1", jobData["runNumber"])
-		assert.Equal(t, "789", jobData["runId"])
-		assert.Equal(t, "success", jobData["status"])
-		assert.Equal(t, "test-user", jobData["triggeredBy"])
+		commit := metadata["commit"].(map[string]interface{})
+		assert.Equal(t, "test-sha", commit["sha"])
+		assert.Equal(t, "test-actor", commit["author"])
+		assert.Equal(t, "https://github.com/test-repo/commit/test-sha", commit["url"])
+	})
 
-		commitData := predicate["commitData"].(map[string]interface{})
-		assert.Equal(t, "abc1234", commitData["sha"])
+	// Test blob type
+	t.Run("blob", func(t *testing.T) {
+		var buf bytes.Buffer
+		cmd := NewCommand()
+		cmd.SetOut(&buf)
 
-		organization := predicate["organization"].(map[string]interface{})
-		assert.Equal(t, "test-owner", organization["name"])
+		cmd.SetArgs([]string{
+			"--type", "blob",
+			"--subject-path", tmpFile.Name(),
+			"--digest", "test-digest",
+		})
 
-		compliance := predicate["compliance"].(map[string]interface{})
-		assert.Equal(t, "https://github.com/liatrio/demo-gh-autogov-policy-library", compliance["policyRef"])
-		assert.Equal(t, []interface{}{"test-control"}, compliance["controlIds"])
+		require.NoError(t, cmd.Execute())
 
-		security := predicate["security"].(map[string]interface{})
-		permissions := security["permissions"].(map[string]interface{})
-		assert.Equal(t, "write", permissions["id-token"])
-		assert.Equal(t, "write", permissions["attestations"])
-		assert.Equal(t, "read", permissions["contents"])
-		assert.Equal(t, "read", permissions["packages"])
+		var result map[string]interface{}
+		require.NoError(t, json.Unmarshal(buf.Bytes(), &result))
+
+		// Verify artifact data
+		artifact := result["artifact"].(map[string]interface{})
+		assert.Equal(t, "test-sha-test-run-number", artifact["version"])
+		assert.Equal(t, "blob", artifact["type"])
+		assert.Equal(t, tmpFile.Name(), artifact["path"])
 	})
 }

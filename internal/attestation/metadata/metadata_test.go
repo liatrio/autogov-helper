@@ -8,123 +8,152 @@ import (
 )
 
 func TestNewFromOptions(t *testing.T) {
-	now := time.Now()
-	opts := Options{
-		// Subject details
-		SubjectName: "test-subject",
-		SubjectPath: "test-path",
-		Digest:      "test-digest",
+	t.Run("blob", func(t *testing.T) {
+		now := time.Now()
+		opts := Options{
+			// Subject details
+			SubjectName: "test-subject",
+			SubjectPath: "test-path",
+			Digest:      "test-digest",
 
-		// Artifact details
-		Version:  "1.0.0",
-		Created:  now,
-		Type:     ArtifactTypeBlob,
-		Registry: "test-registry",
-		FullName: "test-fullname",
-		Path:     "test-path",
+			// Artifact details
+			Version: "1.0.0",
+			Created: now,
+			Type:    ArtifactTypeBlob,
 
-		// Repository details
-		Repository:      "test-repo",
-		RepositoryID:    "test-repo-id",
-		GitHubServerURL: "test-server-url",
+			// Repository details
+			Repository:      "test-repo",
+			GitHubServerURL: "test-server-url",
 
-		// Owner details
-		Owner:   "test-owner",
-		OwnerID: "test-owner-id",
+			// Owner details
+			Owner: "test-owner",
 
-		// Runner details
-		OS:          "test-os",
-		Arch:        "test-arch",
-		Environment: "test-env",
+			// Runner details
+			OS:   "test-os",
+			Name: "test-runner",
 
-		// Build details
-		BuildType:      "test-build-type",
-		PermissionType: "test-permission-type",
+			// Build details
+			BuildType:      "github-workflow",
+			PermissionType: "github-workflow",
 
-		// Workflow details
-		WorkflowRefPath: "test-workflow-ref",
-		Inputs:          map[string]any{"test": "value"},
-		Branch:          "test-branch",
-		Event:           "test-event",
+			// Workflow details
+			WorkflowName:    "test-workflow",
+			WorkflowRefPath: "test-workflow-ref",
+			RunID:           "test-run-id",
 
-		// Job details
-		RunNumber:   "test-run-number",
-		RunID:       "test-run-id",
-		Status:      "test-status",
-		TriggeredBy: "test-user",
-		StartedAt:   now,
-		CompletedAt: now,
+			// Job details
+			JobName: "test-job",
 
-		// Organization details
-		Organization: "test-org",
+			// Commit details
+			SHA:     "test-sha",
+			Message: "test-message",
+			Author:  "test-author",
+			URL:     "test-url",
+		}
 
-		// Commit details
-		SHA: "test-sha",
-	}
+		m, err := NewFromOptions(opts)
+		assert.NoError(t, err)
+		assert.NotNil(t, m)
 
-	m, err := NewFromOptions(opts)
-	assert.NoError(t, err)
-	assert.NotNil(t, m)
+		// Verify Artifact fields
+		assert.Equal(t, opts.Version, m.Artifact.Version)
+		assert.Equal(t, opts.Created.Format(time.RFC3339), m.Artifact.Created)
+		assert.Equal(t, string(opts.Type), m.Artifact.Type)
+		assert.Equal(t, opts.SubjectPath, m.Artifact.Path)
+		assert.Equal(t, opts.Digest, m.Artifact.Digest)
+		assert.Empty(t, m.Artifact.Registry)
+		assert.Empty(t, m.Artifact.FullName)
 
-	// Verify Statement fields
-	assert.Equal(t, "https://in-toto.io/Statement/v1", m.Statement.Type)
-	assert.Equal(t, PredicateTypeURI, m.Statement.PredicateType)
-	assert.Equal(t, opts.SubjectName, m.Statement.Subject[0].Name)
-	assert.Equal(t, opts.Digest, m.Statement.Subject[0].Digest.SHA256)
+		verifyCommonFields(t, opts, m)
+	})
 
-	// Verify Predicate fields
-	assert.Equal(t, opts.Version, m.Predicate.Artifact.Version)
-	assert.Equal(t, opts.Created.Format(time.RFC3339), m.Predicate.Artifact.Created)
-	assert.Equal(t, string(opts.Type), m.Predicate.Artifact.Type)
-	assert.Equal(t, opts.Path, m.Predicate.Artifact.Path)
+	t.Run("container_image", func(t *testing.T) {
+		now := time.Now()
+		opts := Options{
+			// Subject details
+			SubjectName: "test-subject",
+			Digest:      "test-digest",
 
-	// Verify Repository data
-	assert.Equal(t, opts.Repository, m.Predicate.RepositoryData.Repository)
-	assert.Equal(t, opts.RepositoryID, m.Predicate.RepositoryData.RepositoryId)
-	assert.Equal(t, opts.GitHubServerURL, m.Predicate.RepositoryData.GitHubServerURL)
+			// Artifact details
+			Version:  "1.0.0",
+			Created:  now,
+			Type:     ArtifactTypeContainerImage,
+			Registry: "test-registry",
+			FullName: "test-fullname",
 
-	// Verify Owner data
-	assert.Equal(t, opts.Owner, m.Predicate.OwnerData.Owner)
-	assert.Equal(t, opts.OwnerID, m.Predicate.OwnerData.OwnerId)
+			// Repository details
+			Repository:      "test-repo",
+			GitHubServerURL: "test-server-url",
 
-	// Verify Runner data
-	assert.Equal(t, opts.OS, m.Predicate.RunnerData.OS)
-	assert.Equal(t, opts.Arch, m.Predicate.RunnerData.Arch)
-	assert.Equal(t, opts.Environment, m.Predicate.RunnerData.Environment)
+			// Owner details
+			Owner: "test-owner",
 
-	// Verify Workflow data
-	assert.Equal(t, opts.WorkflowRefPath, m.Predicate.WorkflowData.WorkflowRefPath)
-	assert.Equal(t, opts.Inputs, m.Predicate.WorkflowData.Inputs)
-	assert.Equal(t, opts.Branch, m.Predicate.WorkflowData.Branch)
-	assert.Equal(t, opts.Event, m.Predicate.WorkflowData.Event)
+			// Runner details
+			OS:   "test-os",
+			Name: "test-runner",
 
-	// Verify Job data
-	assert.Equal(t, opts.RunNumber, m.Predicate.JobData.RunNumber)
-	assert.Equal(t, opts.RunID, m.Predicate.JobData.RunId)
-	assert.Equal(t, opts.Status, m.Predicate.JobData.Status)
-	assert.Equal(t, opts.TriggeredBy, m.Predicate.JobData.TriggeredBy)
-	assert.Equal(t, opts.StartedAt.Format(time.RFC3339), m.Predicate.JobData.StartedAt)
-	assert.Equal(t, opts.CompletedAt.Format(time.RFC3339), m.Predicate.JobData.CompletedAt)
+			// Build details
+			BuildType:      "github-workflow",
+			PermissionType: "github-workflow",
 
-	// Verify Commit data
-	assert.Equal(t, opts.SHA, m.Predicate.CommitData.SHA)
-	assert.Equal(t, opts.Created.Format(time.RFC3339), m.Predicate.CommitData.Timestamp)
+			// Workflow details
+			WorkflowName:    "test-workflow",
+			WorkflowRefPath: "test-workflow-ref",
+			RunID:           "test-run-id",
 
-	// Verify Organization data
-	assert.Equal(t, opts.Organization, m.Predicate.Organization.Name)
+			// Job details
+			JobName: "test-job",
 
-	// Verify Compliance data
-	assert.Equal(t, "https://github.com/liatrio/demo-gh-autogov-policy-library", m.Predicate.Compliance.PolicyRef)
-	assert.Equal(t, []string{"test-control"}, m.Predicate.Compliance.ControlIds)
+			// Commit details
+			SHA:     "test-sha",
+			Message: "test-message",
+			Author:  "test-author",
+			URL:     "test-url",
+		}
 
-	// Verify Security data
-	assert.Equal(t, "write", m.Predicate.Security.Permissions.IdToken)
-	assert.Equal(t, "write", m.Predicate.Security.Permissions.Attestations)
-	assert.Equal(t, "read", m.Predicate.Security.Permissions.Contents)
-	assert.Equal(t, "read", m.Predicate.Security.Permissions.Packages)
+		m, err := NewFromOptions(opts)
+		assert.NoError(t, err)
+		assert.NotNil(t, m)
+
+		// Verify Artifact fields
+		assert.Equal(t, opts.Version, m.Artifact.Version)
+		assert.Equal(t, opts.Created.Format(time.RFC3339), m.Artifact.Created)
+		assert.Equal(t, string(opts.Type), m.Artifact.Type)
+		assert.Equal(t, opts.Registry, m.Artifact.Registry)
+		assert.Equal(t, opts.FullName, m.Artifact.FullName)
+		assert.Equal(t, opts.Digest, m.Artifact.Digest)
+		assert.Empty(t, m.Artifact.Path)
+
+		verifyCommonFields(t, opts, m)
+	})
 }
 
-func TestMetadataType(t *testing.T) {
-	m := &Metadata{}
-	assert.Equal(t, PredicateTypeURI, m.Type())
+func verifyCommonFields(t *testing.T, opts Options, m *Metadata) {
+	// Verify metadata fields
+	assert.Equal(t, opts.BuildType, m.Metadata.BuildType)
+	assert.Equal(t, opts.PermissionType, m.Metadata.PermissionType)
+
+	// Verify repository data
+	assert.Equal(t, opts.Repository, m.Metadata.Repository.Name)
+	assert.Equal(t, opts.Owner, m.Metadata.Repository.Owner)
+	assert.Equal(t, opts.GitHubServerURL, m.Metadata.Repository.URL)
+
+	// Verify workflow data
+	assert.Equal(t, opts.WorkflowName, m.Metadata.Workflow.Name)
+	assert.Equal(t, opts.WorkflowRefPath, m.Metadata.Workflow.Ref)
+	assert.Equal(t, opts.RunID, m.Metadata.Workflow.ID)
+
+	// Verify job data
+	assert.Equal(t, opts.JobName, m.Metadata.Job.Name)
+	assert.Equal(t, opts.RunID, m.Metadata.Job.ID)
+
+	// Verify runner data
+	assert.Equal(t, opts.Name, m.Metadata.Runner.Name)
+	assert.Equal(t, opts.OS, m.Metadata.Runner.OS)
+
+	// Verify commit data
+	assert.Equal(t, opts.SHA, m.Metadata.Commit.SHA)
+	assert.Equal(t, opts.Message, m.Metadata.Commit.Message)
+	assert.Equal(t, opts.Author, m.Metadata.Commit.Author)
+	assert.Equal(t, opts.URL, m.Metadata.Commit.URL)
 }

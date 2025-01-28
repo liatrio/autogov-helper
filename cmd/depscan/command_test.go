@@ -72,13 +72,11 @@ func TestDepscanCommand(t *testing.T) {
 		err = cmd.Execute()
 		require.NoError(t, err)
 
-		var result map[string]interface{}
-		err = json.Unmarshal(output.Bytes(), &result)
+		var predicate map[string]interface{}
+		err = json.Unmarshal(output.Bytes(), &predicate)
 		require.NoError(t, err)
 
-		predicate := result["predicate"].(map[string]interface{})
 		scanner := predicate["scanner"].(map[string]interface{})
-
 		assert.Equal(t, "https://github.com/anchore/grype/releases/tag/v0.74.7", scanner["uri"])
 		assert.Equal(t, "0.74.7", scanner["version"])
 
