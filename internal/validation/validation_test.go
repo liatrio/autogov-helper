@@ -57,7 +57,7 @@ func setupMockSchemaServer(t *testing.T) *httptest.Server {
 								"properties": {
 									"version": { "type": "string" },
 									"created": { "type": "string", "format": "date-time" },
-									"type": { "type": "string", "enum": ["container-image", "blob"] }
+									"type": { "type": "string", "enum": ["container-image", "image", "blob"] }
 								},
 								"required": ["version", "created", "type"]
 							},
@@ -281,7 +281,7 @@ func TestValidateMetadata(t *testing.T) {
 				"artifact": {
 					"version": "1.0.0",
 					"created": "2024-01-27T19:48:49Z",
-					"type": "container-image"
+					"type": "image"
 				},
 				"repositoryData": {
 					"repository": "test-repo",

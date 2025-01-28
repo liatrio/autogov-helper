@@ -194,7 +194,7 @@ func TestNewFromGrypeResults(t *testing.T) {
 		},
 		{
 			name:           "container_image_high_permissions",
-			artifactType:   "container-image",
+			artifactType:   "image",
 			highPermission: true,
 			testData: `{
 				"bomFormat": "CycloneDX",
@@ -281,7 +281,7 @@ func TestNewFromGrypeResults(t *testing.T) {
 		},
 		{
 			name:           "container_image_low_permissions",
-			artifactType:   "container-image",
+			artifactType:   "image",
 			highPermission: false,
 			testData: `{
 				"bomFormat": "CycloneDX",

@@ -27,7 +27,6 @@ jobs:
           only-new-issues: true
       - name: Run linter
         run: golangci-lint run
-
   test:
     name: test
     runs-on: ubuntu-latest
@@ -65,12 +64,10 @@ jobs:
             VERSION="${VERSION}-${GITHUB_SHA::8}"
           fi
           go build -ldflags "-X main.version=${VERSION}" -o bin/gh-attest-util .
-
       - name: Install Binary
         run: |
           sudo cp bin/gh-attest-util /usr/local/bin/
           gh-attest-util --help
-
       - name: Upload binary
         uses: actions/upload-artifact@65c4c4a1ddee5b72f698fdd19549f0f0fb45cf08 # v4.6.0
         with:
@@ -85,7 +82,6 @@ jobs:
       contents: read
       packages: write
       id-token: write
-
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
       - name: Download binary
@@ -98,8 +94,6 @@ jobs:
           chmod +x bin/gh-attest-util
           sudo cp bin/gh-attest-util /usr/local/bin/
           gh-attest-util --help
-
-      # Test blob attestation
       - name: Create test file
         run: echo "test content" > test-file.txt
       - name: Generate blob metadata
@@ -116,15 +110,13 @@ jobs:
           echo "Generated blob metadata:"
           cat blob-metadata.json | jq '.'
           test -f blob-metadata.json
-
-      # Test container image attestation
       - name: Generate container metadata
         env:
           GH_TOKEN: ${{ secrets.UTIL_REPO_ACCESS }}
           GITHUB_TOKEN: ${{ secrets.UTIL_REPO_ACCESS }}
         run: |
           gh-attest-util metadata \
-            --type container-image \
+            --type image \
             --subject-name ghcr.io/test-org/test-repo \
             --subject-digest sha256:test \
             --output container-metadata.json
@@ -133,8 +125,6 @@ jobs:
           echo "Generated container metadata:"
           cat container-metadata.json | jq '.'
           test -f container-metadata.json
-
-      # Test dependency scan attestation
       - name: Create test grype results
         run: |
           cat << EOF > results.json

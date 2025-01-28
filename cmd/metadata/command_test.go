@@ -45,7 +45,7 @@ func TestMetadataCommand(t *testing.T) {
 		{
 			name: "container image",
 			args: []string{
-				"--type", "container-image",
+				"--type", "image",
 				"--subject-name", "ghcr.io/test-org/test-repo",
 				"--subject-digest", "sha256:test",
 			},
@@ -60,7 +60,7 @@ func TestMetadataCommand(t *testing.T) {
 		{
 			name: "container image without digest",
 			args: []string{
-				"--type", "container-image",
+				"--type", "image",
 				"--subject-name", "ghcr.io/test-org/test-repo",
 			},
 			wantErr: true,
@@ -68,7 +68,7 @@ func TestMetadataCommand(t *testing.T) {
 		{
 			name: "container image without subject name",
 			args: []string{
-				"--type", "container-image",
+				"--type", "image",
 				"--subject-digest", "sha256:test",
 			},
 			wantErr: true,

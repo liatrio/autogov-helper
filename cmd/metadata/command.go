@@ -3,12 +3,20 @@ package metadata
 import (
 	"fmt"
 	"os"
+	"strings"
 	"time"
 
 	metadata "gh-attest-util/internal/attestation/metadata"
 
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 )
+
+func mustBindEnv(key, envVar string) {
+	if err := viper.BindEnv(key, envVar); err != nil {
+		panic(fmt.Sprintf("failed to bind env var %s: %v", envVar, err))
+	}
+}
 
 func NewCommand() *cobra.Command {
 	var opts metadata.Options
@@ -22,49 +30,78 @@ func NewCommand() *cobra.Command {
 		Use:   "metadata",
 		Short: "Generate metadata predicate",
 		RunE: func(cmd *cobra.Command, args []string) error {
+			// Configure viper
+			viper.AutomaticEnv()
+			viper.SetEnvPrefix("")
+			viper.SetEnvKeyReplacer(strings.NewReplacer("-", "_"))
+
+			// Bind environment variables
+			mustBindEnv("repository", "GITHUB_REPOSITORY")
+			mustBindEnv("repository-id", "GITHUB_REPOSITORY_ID")
+			mustBindEnv("github-server-url", "GITHUB_SERVER_URL")
+			mustBindEnv("owner", "GITHUB_REPOSITORY_OWNER")
+			mustBindEnv("owner-id", "GITHUB_REPOSITORY_OWNER_ID")
+			mustBindEnv("runner-os", "RUNNER_OS")
+			mustBindEnv("runner-arch", "RUNNER_ARCH")
+			mustBindEnv("runner-environment", "RUNNER_ENVIRONMENT")
+			mustBindEnv("workflow-ref", "GITHUB_WORKFLOW_REF")
+			mustBindEnv("ref-name", "GITHUB_REF_NAME")
+			mustBindEnv("event-name", "GITHUB_EVENT_NAME")
+			mustBindEnv("run-number", "GITHUB_RUN_NUMBER")
+			mustBindEnv("run-id", "GITHUB_RUN_ID")
+			mustBindEnv("job-status", "GITHUB_JOB_STATUS")
+			mustBindEnv("actor", "GITHUB_ACTOR")
+			mustBindEnv("sha", "GITHUB_SHA")
+			mustBindEnv("organization", "GITHUB_ORGANIZATION")
+			mustBindEnv("policy-ref", "POLICY_REF")
+			mustBindEnv("control-ids", "CONTROL_IDS")
+			mustBindEnv("job-started-at", "GITHUB_JOB_STARTED_AT")
+			mustBindEnv("job-completed-at", "GITHUB_JOB_COMPLETED_AT")
+			mustBindEnv("event-timestamp", "GITHUB_EVENT_TIMESTAMP")
+
 			// Set repository data
-			opts.Repository = os.Getenv("GITHUB_REPOSITORY")
-			opts.RepositoryID = os.Getenv("GITHUB_REPOSITORY_ID")
-			opts.GitHubServerURL = os.Getenv("GITHUB_SERVER_URL")
+			opts.Repository = viper.GetString("repository")
+			opts.RepositoryID = viper.GetString("repository-id")
+			opts.GitHubServerURL = viper.GetString("github-server-url")
 
 			// Set owner data
-			opts.Owner = os.Getenv("GITHUB_REPOSITORY_OWNER")
-			opts.OwnerID = os.Getenv("GITHUB_REPOSITORY_OWNER_ID")
+			opts.Owner = viper.GetString("owner")
+			opts.OwnerID = viper.GetString("owner-id")
 
 			// Set runner data
-			opts.OS = os.Getenv("RUNNER_OS")
-			opts.Arch = os.Getenv("RUNNER_ARCH")
-			opts.Environment = os.Getenv("RUNNER_ENVIRONMENT")
+			opts.OS = viper.GetString("runner-os")
+			opts.Arch = viper.GetString("runner-arch")
+			opts.Environment = viper.GetString("runner-environment")
 
 			// Set workflow data
-			opts.WorkflowRefPath = os.Getenv("GITHUB_WORKFLOW_REF")
-			opts.Branch = os.Getenv("GITHUB_REF_NAME")
-			opts.Event = os.Getenv("GITHUB_EVENT_NAME")
+			opts.WorkflowRefPath = viper.GetString("workflow-ref")
+			opts.Branch = viper.GetString("ref-name")
+			opts.Event = viper.GetString("event-name")
 
 			// Set job data
-			opts.RunNumber = os.Getenv("GITHUB_RUN_NUMBER")
-			opts.RunID = os.Getenv("GITHUB_RUN_ID")
-			opts.Status = os.Getenv("GITHUB_JOB_STATUS")
-			opts.TriggeredBy = os.Getenv("GITHUB_ACTOR")
-			if startedAt, err := time.Parse(time.RFC3339, os.Getenv("GITHUB_JOB_STARTED_AT")); err == nil {
+			opts.RunNumber = viper.GetString("run-number")
+			opts.RunID = viper.GetString("run-id")
+			opts.Status = viper.GetString("job-status")
+			opts.TriggeredBy = viper.GetString("actor")
+			if startedAt, err := time.Parse(time.RFC3339, viper.GetString("job-started-at")); err == nil {
 				opts.StartedAt = startedAt
 			}
-			if completedAt, err := time.Parse(time.RFC3339, os.Getenv("GITHUB_JOB_COMPLETED_AT")); err == nil {
+			if completedAt, err := time.Parse(time.RFC3339, viper.GetString("job-completed-at")); err == nil {
 				opts.CompletedAt = completedAt
 			}
 
 			// Set commit data
-			opts.SHA = os.Getenv("GITHUB_SHA")
-			if timestamp, err := time.Parse(time.RFC3339, os.Getenv("GITHUB_EVENT_TIMESTAMP")); err == nil {
+			opts.SHA = viper.GetString("sha")
+			if timestamp, err := time.Parse(time.RFC3339, viper.GetString("event-timestamp")); err == nil {
 				opts.Timestamp = timestamp
 			}
 
 			// Set organization data
-			opts.OrgName = os.Getenv("GITHUB_ORGANIZATION")
+			opts.OrgName = viper.GetString("organization")
 
 			// Set compliance data
-			opts.PolicyRef = os.Getenv("POLICY_REF")
-			if controlIds := os.Getenv("CONTROL_IDS"); controlIds != "" {
+			opts.PolicyRef = viper.GetString("policy-ref")
+			if controlIds := viper.GetString("control-ids"); controlIds != "" {
 				opts.ControlIds = []string{controlIds}
 			}
 
@@ -82,13 +119,13 @@ func NewCommand() *cobra.Command {
 
 			// Handle artifact type-specific fields
 			switch artifactType {
-			case "container-image":
+			case "image":
 				opts.Type = metadata.ArtifactTypeContainerImage
 				if subjectName == "" {
-					return fmt.Errorf("subject-name is required for container-image type")
+					return fmt.Errorf("subject-name is required for image type")
 				}
 				if subjectDigest == "" {
-					return fmt.Errorf("subject-digest is required for container-image type")
+					return fmt.Errorf("subject-digest is required for image type")
 				}
 				opts.FullName = subjectName
 				opts.Digest = subjectDigest
@@ -129,9 +166,9 @@ func NewCommand() *cobra.Command {
 	flags := cmd.Flags()
 	flags.StringVar(&outputFile, "output", "", "Output file")
 	flags.StringVar(&subjectPath, "subject-path", "", "Path to the subject file (required for blob type)")
-	flags.StringVar(&subjectName, "subject-name", "", "Name of the subject being attested (required for container-image type)")
-	flags.StringVar(&subjectDigest, "subject-digest", "", "SHA256 digest of the subject (required for container-image type)")
-	flags.StringVar(&artifactType, "type", "container-image", "Type of build (container-image or blob)")
+	flags.StringVar(&subjectName, "subject-name", "", "Name of the subject being attested (required for image type)")
+	flags.StringVar(&subjectDigest, "subject-digest", "", "SHA256 digest of the subject (required for image type)")
+	flags.StringVar(&artifactType, "type", "image", "Type of build (image or blob)")
 
 	return cmd
 }
