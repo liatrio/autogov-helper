@@ -7,7 +7,7 @@ import (
 
 const PredicateTypeURI = "https://cosign.sigstore.dev/attestation/v1"
 
-// ArtifactType represents the type of artifact being attested
+// represents the type of artifact being attested
 type ArtifactType string
 
 const (
@@ -15,7 +15,7 @@ const (
 	ArtifactTypeContainerImage ArtifactType = "container-image"
 )
 
-// Metadata struct represents just the predicate portion of the attestation
+// struct represents just the predicate portion of the attestation
 type Metadata struct {
 	Artifact struct {
 		Version  string `json:"version"`
@@ -71,7 +71,7 @@ type Metadata struct {
 }
 
 type Options struct {
-	// Artifact fields
+	// artifact fields
 	Version     string
 	Created     time.Time
 	Type        ArtifactType
@@ -80,27 +80,27 @@ type Options struct {
 	SubjectPath string
 	Digest      string
 
-	// Repository fields
+	// repo fields
 	Repository      string
 	RepositoryID    string
 	GitHubServerURL string
 
-	// Owner fields
+	// owner fields
 	Owner   string
 	OwnerID string
 
-	// Runner fields
+	// runner fields
 	OS          string
 	Arch        string
 	Environment string
 
-	// Workflow fields
+	// wf fields
 	WorkflowRefPath string
 	Inputs          map[string]any
 	Branch          string
 	Event           string
 
-	// Job fields
+	// job fields
 	RunNumber   string
 	RunID       string
 	Status      string
@@ -108,18 +108,18 @@ type Options struct {
 	StartedAt   time.Time
 	CompletedAt time.Time
 
-	// Commit fields
+	// commit fields
 	SHA       string
 	Timestamp time.Time
 
-	// Organization fields
+	// org fields
 	OrgName string
 
-	// Compliance fields
+	// compliance fields
 	PolicyRef  string
 	ControlIds []string
 
-	// Security fields
+	// perissions fields
 	Permissions map[string]string
 }
 
@@ -134,7 +134,7 @@ func (m *Metadata) Generate() ([]byte, error) {
 func NewFromOptions(opts Options) (*Metadata, error) {
 	m := &Metadata{}
 
-	// Set artifact fields
+	// set artifact fields
 	m.Artifact.Version = opts.Version
 	m.Artifact.Created = opts.Created.Format(time.RFC3339)
 	m.Artifact.Type = string(opts.Type)
@@ -149,27 +149,27 @@ func NewFromOptions(opts Options) (*Metadata, error) {
 		m.Artifact.Digest = opts.Digest
 	}
 
-	// Set repository data
+	// set repo data
 	m.RepositoryData.Repository = opts.Repository
 	m.RepositoryData.RepositoryID = opts.RepositoryID
 	m.RepositoryData.GitHubServerURL = opts.GitHubServerURL
 
-	// Set owner data
+	// set owner data
 	m.OwnerData.Owner = opts.Owner
 	m.OwnerData.OwnerID = opts.OwnerID
 
-	// Set runner data
+	// set runner data
 	m.RunnerData.OS = opts.OS
 	m.RunnerData.Arch = opts.Arch
 	m.RunnerData.Environment = opts.Environment
 
-	// Set workflow data
+	// set wf data
 	m.WorkflowData.WorkflowRefPath = opts.WorkflowRefPath
 	m.WorkflowData.Inputs = opts.Inputs
 	m.WorkflowData.Branch = opts.Branch
 	m.WorkflowData.Event = opts.Event
 
-	// Set job data
+	// set job data
 	m.JobData.RunNumber = opts.RunNumber
 	m.JobData.RunID = opts.RunID
 	m.JobData.Status = opts.Status
@@ -177,18 +177,18 @@ func NewFromOptions(opts Options) (*Metadata, error) {
 	m.JobData.StartedAt = opts.StartedAt.Format(time.RFC3339)
 	m.JobData.CompletedAt = opts.CompletedAt.Format(time.RFC3339)
 
-	// Set commit data
+	// set commit data
 	m.CommitData.SHA = opts.SHA
 	m.CommitData.Timestamp = opts.Timestamp.Format(time.RFC3339)
 
-	// Set organization data
+	// set org data
 	m.Organization.Name = opts.OrgName
 
-	// Set compliance data
+	// set compliance data
 	m.Compliance.PolicyRef = opts.PolicyRef
 	m.Compliance.ControlIds = opts.ControlIds
 
-	// Set security data
+	// set permissions data
 	m.Security.Permissions = opts.Permissions
 
 	return m, nil

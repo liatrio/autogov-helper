@@ -19,45 +19,38 @@ func TestDepscanCommand(t *testing.T) {
 		resultsPath := filepath.Join(tmpDir, "results.json")
 
 		testData := []byte(`{
-			"bomFormat": "CycloneDX",
-			"specVersion": "1.5",
-			"version": 1,
-			"metadata": {
-				"timestamp": "2024-03-14T12:00:00Z",
-				"tools": [
-					{
-						"vendor": "anchore",
-						"name": "grype",
-						"version": "0.74.7"
+			"descriptor": {
+				"version": "0.87.0",
+				"timestamp": "2025-01-24T00:18:00.27584939Z",
+				"configuration": {
+					"db": {
+						"update-url": "https://toolbox-data.anchore.io/grype/databases/listing.json"
 					}
-				]
+				},
+				"db": {
+					"built": "2025-01-23T01:31:43Z",
+					"schemaVersion": "5"
+				}
 			},
-			"vulnerabilities": [
+			"matches": [
 				{
-					"id": "CVE-2024-1234",
-					"source": {
-						"name": "nvd",
-						"url": "https://nvd.nist.gov"
-					},
-					"ratings": [
-						{
-							"source": {
-								"name": "nvd"
-							},
-							"score": 7.5,
-							"severity": "HIGH",
-							"method": "CVSSv3"
-						}
-					]
+					"vulnerability": {
+						"id": "CVE-2024-1234",
+						"severity": "Medium",
+						"cvss": [
+							{
+								"metrics": {
+									"baseScore": 7.5
+								}
+							}
+						]
+					}
 				}
 			]
 		}`)
 
 		err := os.WriteFile(resultsPath, testData, 0600)
 		require.NoError(t, err)
-
-		os.Setenv("POLICY_VERSION", "v0.8.0")
-		os.Setenv("GITHUB_TOKEN", os.Getenv("GH_TOKEN"))
 
 		cmd := depscan.NewCommand()
 		var output bytes.Buffer
@@ -77,13 +70,13 @@ func TestDepscanCommand(t *testing.T) {
 		require.NoError(t, err)
 
 		scanner := predicate["scanner"].(map[string]interface{})
-		assert.Equal(t, "https://github.com/anchore/grype/releases/tag/v0.74.7", scanner["uri"])
-		assert.Equal(t, "0.74.7", scanner["version"])
+		assert.Equal(t, "https://github.com/anchore/grype/releases/tag/v0.87.0", scanner["uri"])
+		assert.Equal(t, "0.87.0", scanner["version"])
 
 		db := scanner["db"].(map[string]interface{})
-		assert.Equal(t, "grype", db["name"])
-		assert.Equal(t, "1.5", db["version"])
-		assert.Equal(t, "2024-03-14T12:00:00Z", db["lastUpdated"])
+		assert.Equal(t, "https://toolbox-data.anchore.io/grype/databases/listing.json", db["uri"])
+		assert.Equal(t, "5", db["version"])
+		assert.Equal(t, "2025-01-23T01:31:43Z", db["lastUpdate"])
 
 		results := scanner["result"].([]interface{})
 		require.Len(t, results, 1)
@@ -91,8 +84,19 @@ func TestDepscanCommand(t *testing.T) {
 		vuln := results[0].(map[string]interface{})
 		assert.Equal(t, "CVE-2024-1234", vuln["id"])
 
-		severity := vuln["severity"].(map[string]interface{})
-		assert.Equal(t, "CVSSv3", severity["method"])
-		assert.Equal(t, "7.5", severity["score"])
+		severities := vuln["severity"].([]interface{})
+		require.Len(t, severities, 2)
+
+		nvdSeverity := severities[0].(map[string]interface{})
+		assert.Equal(t, "nvd", nvdSeverity["method"])
+		assert.Equal(t, "Medium", nvdSeverity["score"])
+
+		cvssScore := severities[1].(map[string]interface{})
+		assert.Equal(t, "cvss_score", cvssScore["method"])
+		assert.Equal(t, "7.5", cvssScore["score"])
+
+		metadata := predicate["metadata"].(map[string]interface{})
+		assert.Equal(t, "2025-01-23T01:31:43Z", metadata["scanStartedOn"])
+		assert.Equal(t, "2025-01-24T00:18:00.27584939Z", metadata["scanFinishedOn"])
 	})
 }

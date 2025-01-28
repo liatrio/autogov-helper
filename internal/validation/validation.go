@@ -32,12 +32,12 @@ var (
 	}
 )
 
-// For testing purposes
+// for testing
 func setSchemaBaseURL(url string) {
 	schemaBaseURL = url
 }
 
-// getGitHubClient returns a GitHub client using token from environment
+// returns a GitHub client using token from env
 func getGitHubClient() (*github.Client, error) {
 	// try gh token first, then github token
 	token := os.Getenv("GH_TOKEN")
@@ -52,7 +52,7 @@ func getGitHubClient() (*github.Client, error) {
 	return github.NewClient(nil).WithAuthToken(token), nil
 }
 
-// validateSchemaURL ensures the schema URL is safe
+// ensures the schema URL is safe
 func validateSchemaURL(baseURL, schemaName string) (string, error) {
 	// validate schema name
 	if !strings.HasSuffix(schemaName, ".json") {
@@ -79,14 +79,14 @@ func validateSchemaURL(baseURL, schemaName string) (string, error) {
 	return parsedURL.String(), nil
 }
 
-// fetchSchemaContent fetches schema content either from a direct URL or GitHub API
+// fetches schema content either from a direct URL or gh api
 func fetchSchemaContent(schemaName string) (string, error) {
 	cfg, err := config.Load()
 	if err != nil {
 		return "", fmt.Errorf("failed to load config: %w", err)
 	}
 
-	// if schema base url is set, use direct HTTP
+	// if schema base url is set, use direct http
 	if schemaBaseURL != "https://raw.githubusercontent.com" {
 		url, err := validateSchemaURL(schemaBaseURL, schemaName)
 		if err != nil {
@@ -143,18 +143,18 @@ func fetchSchemaContent(schemaName string) (string, error) {
 	return schemaContent, nil
 }
 
-// ValidateJSON validates a JSON document against a schema from the policy repo
+// validates JSON against schema from policy repo
 func ValidateJSON(data []byte, schemaName string) error {
 	schemaContent, err := fetchSchemaContent(schemaName)
 	if err != nil {
 		return err
 	}
 
-	// Create schema loaders
+	// create schema loaders
 	schemaLoader := gojsonschema.NewStringLoader(schemaContent)
 	documentLoader := gojsonschema.NewBytesLoader(data)
 
-	// Validate
+	// validate schema
 	result, err := gojsonschema.Validate(schemaLoader, documentLoader)
 	if err != nil {
 		return fmt.Errorf("validation error: %w", err)
@@ -171,12 +171,12 @@ func ValidateJSON(data []byte, schemaName string) error {
 	return nil
 }
 
-// ValidateMetadata validates a metadata attestation against the schema
+// validates a metadata attestation against the schema
 func ValidateMetadata(data []byte) error {
 	return ValidateJSON(data, "metadata.json")
 }
 
-// ValidateDepscan validates a dependency scan attestation against the schema
+// validates a dependency scan attestation against the schema
 func ValidateDepscan(data []byte) error {
 	return ValidateJSON(data, "dependency-vulnerability.json")
 }

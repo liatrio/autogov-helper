@@ -11,22 +11,22 @@ import (
 //go:embed templates/*.json
 var templateFS embed.FS
 
-// RenderTemplate renders a template with the given data
+// renders a template with the given data
 func RenderTemplate(templateName string, data interface{}) ([]byte, error) {
-	// Read template content
+	// template content
 	templatePath := filepath.Join("templates", templateName+".json")
 	tmplContent, err := templateFS.ReadFile(templatePath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read template %s: %w", templateName, err)
 	}
 
-	// Parse template
+	// parse template
 	tmpl, err := template.New(templateName).Parse(string(tmplContent))
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse template %s: %w", templateName, err)
 	}
 
-	// Execute template
+	// execute/render template
 	var buf bytes.Buffer
 	if err := tmpl.Execute(&buf, data); err != nil {
 		return nil, fmt.Errorf("failed to execute template %s: %w", templateName, err)
@@ -35,7 +35,7 @@ func RenderTemplate(templateName string, data interface{}) ([]byte, error) {
 	return buf.Bytes(), nil
 }
 
-// MetadataTemplateData holds data for metadata templates
+// data for metadata templates
 type MetadataTemplateData struct {
 	Version           string
 	Type              string // "container-image" or "blob"
@@ -69,7 +69,7 @@ type MetadataTemplateData struct {
 	ControlIds        []string
 }
 
-// DepscanTemplateData holds data for depscan templates
+// data for depscan templates
 type DepscanTemplateData struct {
 	ScannerURI     string
 	ScannerVersion string

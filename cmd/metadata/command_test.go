@@ -11,7 +11,7 @@ import (
 )
 
 func TestMetadataCommand(t *testing.T) {
-	// Set up test environment variables
+	// test env vars
 	os.Setenv("GITHUB_REPOSITORY", "test-org/test-repo")
 	os.Setenv("GITHUB_REPOSITORY_ID", "12345")
 	os.Setenv("GITHUB_SERVER_URL", "https://github.com")
@@ -96,18 +96,18 @@ func TestMetadataCommand(t *testing.T) {
 			}
 			assert.NoError(t, err)
 
-			// Verify output is valid JSON
+			// verify valid JSON
 			var result map[string]interface{}
 			err = json.Unmarshal(buf.Bytes(), &result)
 			assert.NoError(t, err)
 
-			// Verify artifact data exists
+			// verify artifact exists
 			artifact, ok := result["artifact"].(map[string]interface{})
 			assert.True(t, ok, "artifact field should be a map")
 			assert.NotEmpty(t, artifact["version"])
 			assert.NotEmpty(t, artifact["created"])
 
-			// Verify type-specific fields
+			// verify type-specific fields
 			if tt.name == "container image" {
 				assert.Equal(t, "container-image", artifact["type"])
 				assert.Equal(t, "ghcr.io/test-org/test-repo", artifact["fullName"])
@@ -117,7 +117,7 @@ func TestMetadataCommand(t *testing.T) {
 				assert.Equal(t, "test-file.txt", artifact["path"])
 			}
 
-			// Verify other required sections exist
+			// verify other reqs exist
 			assert.Contains(t, result, "repositoryData")
 			assert.Contains(t, result, "ownerData")
 			assert.Contains(t, result, "runnerData")
@@ -130,6 +130,6 @@ func TestMetadataCommand(t *testing.T) {
 		})
 	}
 
-	// Clean up environment variables
+	// cleanup env vars
 	os.Clearenv()
 }

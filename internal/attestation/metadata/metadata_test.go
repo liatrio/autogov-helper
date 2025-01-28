@@ -102,12 +102,12 @@ func TestNewFromOptions(t *testing.T) {
 			}
 			assert.NoError(t, err)
 
-			// Verify the metadata can be marshaled to JSON
+			// verify metadata marshable to JSON
 			output, err := json.Marshal(m)
 			assert.NoError(t, err)
 			assert.NotEmpty(t, output)
 
-			// Verify it's a valid JSON object
+			// verify valid JSON object
 			var jsonMap map[string]interface{}
 			err = json.Unmarshal(output, &jsonMap)
 			assert.NoError(t, err)

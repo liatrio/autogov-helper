@@ -2,20 +2,20 @@ package config
 
 import "os"
 
-// PolicyRepo represents the configuration for the policy repository
+// config for policy repo
 type PolicyRepo struct {
 	Owner string
 	Name  string
 	Ref   string
 }
 
-// Config represents the application configuration
+// ^ app config
 type Config struct {
 	PolicyRepo  PolicyRepo
 	SchemasPath string
 }
 
-// Load loads the configuration from environment variables
+// loads config via env vars
 func Load() (*Config, error) {
 	cfg := &Config{
 		PolicyRepo: PolicyRepo{

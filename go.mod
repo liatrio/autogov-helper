@@ -3,7 +3,6 @@ module gh-attest-util
 go 1.23.4
 
 require (
-	github.com/CycloneDX/cyclonedx-go v0.8.0
 	github.com/google/go-github/v68 v68.0.0
 	github.com/spf13/cobra v1.8.1
 	github.com/spf13/viper v1.18.2

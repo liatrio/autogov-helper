@@ -30,12 +30,12 @@ func NewCommand() *cobra.Command {
 		Use:   "metadata",
 		Short: "Generate metadata predicate",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			// Configure viper
+
 			viper.AutomaticEnv()
 			viper.SetEnvPrefix("")
 			viper.SetEnvKeyReplacer(strings.NewReplacer("-", "_"))
 
-			// Bind environment variables
+			// bind env vars
 			mustBindEnv("repository", "GITHUB_REPOSITORY")
 			mustBindEnv("repository-id", "GITHUB_REPOSITORY_ID")
 			mustBindEnv("github-server-url", "GITHUB_SERVER_URL")
@@ -59,26 +59,26 @@ func NewCommand() *cobra.Command {
 			mustBindEnv("job-completed-at", "GITHUB_JOB_COMPLETED_AT")
 			mustBindEnv("event-timestamp", "GITHUB_EVENT_TIMESTAMP")
 
-			// Set repository data
+			// set repo data
 			opts.Repository = viper.GetString("repository")
 			opts.RepositoryID = viper.GetString("repository-id")
 			opts.GitHubServerURL = viper.GetString("github-server-url")
 
-			// Set owner data
+			// set owner data
 			opts.Owner = viper.GetString("owner")
 			opts.OwnerID = viper.GetString("owner-id")
 
-			// Set runner data
+			// set runner data
 			opts.OS = viper.GetString("runner-os")
 			opts.Arch = viper.GetString("runner-arch")
 			opts.Environment = viper.GetString("runner-environment")
 
-			// Set workflow data
+			// set wf data
 			opts.WorkflowRefPath = viper.GetString("workflow-ref")
 			opts.Branch = viper.GetString("ref-name")
 			opts.Event = viper.GetString("event-name")
 
-			// Set job data
+			// set job data
 			opts.RunNumber = viper.GetString("run-number")
 			opts.RunID = viper.GetString("run-id")
 			opts.Status = viper.GetString("job-status")
@@ -90,22 +90,22 @@ func NewCommand() *cobra.Command {
 				opts.CompletedAt = completedAt
 			}
 
-			// Set commit data
+			// set commit data
 			opts.SHA = viper.GetString("sha")
 			if timestamp, err := time.Parse(time.RFC3339, viper.GetString("event-timestamp")); err == nil {
 				opts.Timestamp = timestamp
 			}
 
-			// Set organization data
+			// set org data
 			opts.OrgName = viper.GetString("organization")
 
-			// Set compliance data
+			// set compliance data
 			opts.PolicyRef = viper.GetString("policy-ref")
 			if controlIds := viper.GetString("control-ids"); controlIds != "" {
 				opts.ControlIds = []string{controlIds}
 			}
 
-			// Set security data
+			// set permissions data
 			opts.Permissions = map[string]string{
 				"id-token":     "write",
 				"attestations": "write",
@@ -113,11 +113,11 @@ func NewCommand() *cobra.Command {
 				"packages":     "read",
 			}
 
-			// Set artifact data
+			// set artifact data
 			opts.Created = time.Now()
 			opts.Version = fmt.Sprintf("%s-%s", opts.SHA, opts.RunNumber)
 
-			// Handle artifact type-specific fields
+			// handle artifact specific fields (not predicate)
 			switch artifactType {
 			case "image":
 				opts.Type = metadata.ArtifactTypeContainerImage
