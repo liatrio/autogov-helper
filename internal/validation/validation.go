@@ -14,6 +14,13 @@ import (
 	"github.com/xeipuuv/gojsonschema"
 )
 
+var schemaBaseURL = "https://raw.githubusercontent.com"
+
+// For testing purposes
+func setSchemaBaseURL(url string) {
+	schemaBaseURL = url
+}
+
 // getGitHubClient returns a GitHub client using token from environment
 func getGitHubClient() (*github.Client, error) {
 	token := os.Getenv("GITHUB_TOKEN")
@@ -37,7 +44,8 @@ func ValidateJSON(data []byte, schemaName string) error {
 	}
 
 	// Construct the raw GitHub URL for the schema
-	schemaURL := fmt.Sprintf("https://raw.githubusercontent.com/%s/%s/%s/schemas/%s",
+	schemaURL := fmt.Sprintf("%s/%s/%s/%s/schemas/%s",
+		schemaBaseURL,
 		cfg.PolicyRepo.Owner,
 		cfg.PolicyRepo.Name,
 		cfg.PolicyRepo.Ref,
@@ -68,15 +76,31 @@ func ValidateJSON(data []byte, schemaName string) error {
 		return fmt.Errorf("failed to read schema: %w", err)
 	}
 
-	// Parse the JSON document
-	var doc interface{}
+	// Parse the JSON document to extract predicate
+	var doc map[string]interface{}
 	if err := json.Unmarshal(data, &doc); err != nil {
 		return fmt.Errorf("invalid JSON document: %w", err)
 	}
 
-	// Load the schema
-	schemaLoader := gojsonschema.NewStringLoader(string(schemaBytes))
-	documentLoader := gojsonschema.NewGoLoader(doc)
+	predicate, ok := doc["predicate"].(map[string]interface{})
+	if !ok {
+		return fmt.Errorf("document does not contain a predicate field")
+	}
+
+	// Parse the schema to extract predicate schema
+	var schema map[string]interface{}
+	if err := json.Unmarshal(schemaBytes, &schema); err != nil {
+		return fmt.Errorf("invalid schema JSON: %w", err)
+	}
+
+	predicateSchema, ok := schema["properties"].(map[string]interface{})["predicate"].(map[string]interface{})
+	if !ok {
+		return fmt.Errorf("schema does not contain a predicate definition")
+	}
+
+	// Create schema loaders for just the predicate portions
+	schemaLoader := gojsonschema.NewGoLoader(predicateSchema)
+	documentLoader := gojsonschema.NewGoLoader(predicate)
 
 	// Validate
 	result, err := gojsonschema.Validate(schemaLoader, documentLoader)
@@ -89,7 +113,7 @@ func ValidateJSON(data []byte, schemaName string) error {
 		for _, err := range result.Errors() {
 			errors = append(errors, err.String())
 		}
-		return fmt.Errorf("validation failed: %v", errors)
+		return fmt.Errorf("predicate validation failed: %v", errors)
 	}
 
 	return nil
@@ -97,10 +121,10 @@ func ValidateJSON(data []byte, schemaName string) error {
 
 // ValidateMetadata validates a metadata predicate against the schema
 func ValidateMetadata(data []byte) error {
-	return ValidateJSON(data, "metadata-schema.json")
+	return ValidateJSON(data, "metadata.json")
 }
 
 // ValidateDepscan validates a dependency scan predicate against the schema
 func ValidateDepscan(data []byte) error {
-	return ValidateJSON(data, "dependency-vulnerability-schema.json")
+	return ValidateJSON(data, "dependency-vulnerability.json")
 }

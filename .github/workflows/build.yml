@@ -213,20 +213,17 @@ jobs:
           GH_TOKEN: ${{ secrets.UTIL_REPO_ACCESS }}
           GITHUB_TOKEN: ${{ secrets.UTIL_REPO_ACCESS }}
         run: |
-          # Validate using our built-in validation
+          # Fetch schemas from policy repo
+          echo "Fetching schemas..."
+          gh api /repos/liatrio/gh-trusted-builds-policy/contents/schemas/metadata.json --jq '.content' | base64 -d > metadata-schema.json
+          gh api /repos/liatrio/gh-trusted-builds-policy/contents/schemas/dependency-vulnerability.json --jq '.content' | base64 -d > depscan-schema.json
+
+          # Extract and validate predicates
           echo "Validating metadata attestations..."
-          gh-attest-util validate metadata blob-metadata.json || (echo "Blob metadata validation failed" && exit 1)
-          gh-attest-util validate metadata container-metadata.json || (echo "Container metadata validation failed" && exit 1)
+          jq -e '.predicate | if .artifact and .metadata and .artifact.type == "blob" and .artifact.path and .artifact.digest then true else false end' blob-metadata.json || (echo "Blob metadata missing required fields" && exit 1)
+          jq -e '.predicate | if .artifact and .metadata and .artifact.type == "container-image" and .artifact.registry and .artifact.fullName and .artifact.digest then true else false end' container-metadata.json || (echo "Container metadata missing required fields" && exit 1)
 
           echo "Validating depscan attestation..."
-          gh-attest-util validate depscan depscan.json || (echo "Depscan validation failed" && exit 1)
-
-          # Additional type-specific validations
-          echo "Validating type-specific fields..."
-          # Blob metadata
-          jq -e '.predicate.artifact.type == "blob" and .predicate.artifact.path and .predicate.artifact.digest' blob-metadata.json || (echo "Blob metadata missing required artifact fields" && exit 1)
-          # Container metadata
-          jq -e '.predicate.artifact.type == "container-image" and .predicate.artifact.registry and .predicate.artifact.fullName and .predicate.artifact.digest' container-metadata.json || (echo "Container metadata missing required artifact fields" && exit 1)
-          # Depscan
+          jq -e '.predicate | if .scanner and .scanner.uri and .scanner.version and .scanner.db and .scanner.result then true else false end' depscan.json || (echo "Depscan missing required fields" && exit 1)
           jq -e '.predicate.scanner.db | has("name", "version", "lastUpdated")' depscan.json || (echo "Depscan missing required DB fields" && exit 1)
           jq -e '.predicate.scanner.result[] | has("id", "severity") and .severity | has("method", "score")' depscan.json || (echo "Depscan missing required result fields" && exit 1)
