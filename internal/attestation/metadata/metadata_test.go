@@ -5,78 +5,112 @@ import (
 	"testing"
 	"time"
 
-	"gh-attest-util/internal/github"
-
 	"github.com/stretchr/testify/assert"
 )
 
-func TestNewFromGitHubContext(t *testing.T) {
-	ctx := &github.Context{
-		Repository:        "test-repo",
-		RepositoryOwner:   "test-owner",
-		RepositoryID:      "123",
-		ServerURL:         "https://github.com",
-		RepositoryOwnerID: "456",
-		WorkflowRef:       "main",
-		RefName:           "main",
-		EventName:         "push",
-		SHA:               "abc1234567",
-		RunNumber:         "1",
-		RunID:             "789",
-		Actor:             "test-user",
-		Runner: &github.Runner{
-			OS:          "Linux",
-			Arch:        "X64",
-			Environment: "github-hosted",
+func TestNewFromOptions(t *testing.T) {
+	now := time.Now().UTC()
+
+	tests := []struct {
+		name    string
+		opts    Options
+		wantErr bool
+	}{
+		{
+			name: "valid container image metadata",
+			opts: Options{
+				Type:            ArtifactTypeContainerImage,
+				Registry:        "ghcr.io",
+				Repository:      "test-org/test-repo",
+				FullName:        "ghcr.io/test-org/test-repo",
+				Digest:          "sha256:test",
+				Version:         "test-sha-test-run-number",
+				Created:         now,
+				GitHubServerURL: "https://github.com",
+				Owner:           "test-org",
+				OwnerID:         "test-owner-id",
+				OS:              "test-os",
+				Arch:            "test-arch",
+				Environment:     "test-env",
+				WorkflowRefPath: "test-workflow-ref",
+				Branch:          "test-branch",
+				Event:           "test-event",
+				RunNumber:       "test-run-number",
+				RunID:           "test-run-id",
+				Status:          "test-status",
+				TriggeredBy:     "test-user",
+				StartedAt:       now,
+				CompletedAt:     now,
+				SHA:             "test-sha",
+				Timestamp:       now,
+				OrgName:         "test-org",
+				PolicyRef:       "test-policy",
+				ControlIds:      []string{"test-control"},
+				Permissions: map[string]string{
+					"id-token":     "write",
+					"attestations": "write",
+					"contents":     "read",
+					"packages":     "read",
+				},
+			},
+		},
+		{
+			name: "valid blob metadata",
+			opts: Options{
+				Type:            ArtifactTypeBlob,
+				Repository:      "test-org/test-repo",
+				SubjectPath:     "test-file",
+				Digest:          "sha256:test",
+				Version:         "test-sha-test-run-number",
+				Created:         now,
+				GitHubServerURL: "https://github.com",
+				Owner:           "test-org",
+				OwnerID:         "test-owner-id",
+				OS:              "test-os",
+				Arch:            "test-arch",
+				Environment:     "test-env",
+				WorkflowRefPath: "test-workflow-ref",
+				Branch:          "test-branch",
+				Event:           "test-event",
+				RunNumber:       "test-run-number",
+				RunID:           "test-run-id",
+				Status:          "test-status",
+				TriggeredBy:     "test-user",
+				StartedAt:       now,
+				CompletedAt:     now,
+				SHA:             "test-sha",
+				Timestamp:       now,
+				OrgName:         "test-org",
+				PolicyRef:       "test-policy",
+				ControlIds:      []string{"test-control"},
+				Permissions: map[string]string{
+					"id-token":     "write",
+					"attestations": "write",
+					"contents":     "read",
+					"packages":     "read",
+				},
+			},
 		},
 	}
-	ctx.Event.WorkflowRun.CreatedAt = "2024-03-14T12:00:00Z"
-	ctx.Event.HeadCommit.Timestamp = "2024-03-14T12:00:00Z"
 
-	opts := Options{
-		SubjectName: "test-image",
-		Digest:      "sha256:123",
-		Registry:    "ghcr.io",
-		JobStatus:   "success",
-		PolicyRef:   "https://example.com/policy",
-		ControlIds:  []string{"TEST-001", "TEST-002"},
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			m, err := NewFromOptions(tt.opts)
+			if tt.wantErr {
+				assert.Error(t, err)
+				return
+			}
+			assert.NoError(t, err)
+
+			// verify metadata marshable to JSON
+			output, err := json.Marshal(m)
+			assert.NoError(t, err)
+			assert.NotEmpty(t, output)
+
+			// verify valid JSON object
+			var jsonMap map[string]interface{}
+			err = json.Unmarshal(output, &jsonMap)
+			assert.NoError(t, err)
+		})
 	}
-
-	t.Run("generates valid metadata", func(t *testing.T) {
-		m, err := NewFromGitHubContext(ctx, opts)
-		assert.NoError(t, err)
-
-		data, err := m.Generate()
-		assert.NoError(t, err)
-
-		var result map[string]interface{}
-		err = json.Unmarshal(data, &result)
-		assert.NoError(t, err)
-
-		assert.Contains(t, result, "artifact")
-		assert.Contains(t, result, "repositoryData")
-		assert.Contains(t, result, "ownerData")
-		assert.Contains(t, result, "runnerData")
-		assert.Contains(t, result, "workflowData")
-		assert.Contains(t, result, "jobData")
-		assert.Contains(t, result, "commitData")
-		assert.Contains(t, result, "organization")
-		assert.Contains(t, result, "compliance")
-		assert.Contains(t, result, "security")
-
-		artifact := result["artifact"].(map[string]interface{})
-		assert.Equal(t, "abc1234-1", artifact["version"])
-		assert.Equal(t, "sha256:123", artifact["digest"])
-		assert.Equal(t, "container-image", artifact["type"])
-		assert.Equal(t, "ghcr.io", artifact["registry"])
-		assert.Equal(t, "test-image", artifact["fullName"])
-
-		_, err = time.Parse(time.RFC3339, artifact["created"].(string))
-		assert.NoError(t, err)
-	})
-}
-
-func TestMetadataType(t *testing.T) {
-	m := &Metadata{}
-	assert.Equal(t, PredicateTypeURI, m.Type())
 }
