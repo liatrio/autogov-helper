@@ -1,0 +1,82 @@
+{
+  "artifact": {
+    "version": "{{ .Version }}",
+    {{- if .Digest }}
+    "digest": "{{ .Digest }}",
+    {{- end }}
+    "created": "{{ .Created }}",
+    "type": "{{ .Type }}",
+    {{- if eq .Type "container-image" }}
+    "registry": "{{ .Registry }}",
+    "fullName": "{{ if eq .Registry "local" }}{{ .SubjectName }}{{ else }}{{ .Registry }}/{{ .Repository }}@{{ .Digest }}{{ end }}"
+    {{- else if eq .Type "blob" }}
+    "path": "{{ .Path }}"
+    {{- end }}
+  },
+  "repositoryData": {
+    "repository": "{{ .Repository }}",
+    "repositoryId": "{{ .RepositoryID }}",
+    "githubServerURL": "{{ .GitHubServerURL }}"
+  },
+  "ownerData": {
+    "owner": "{{ .Owner }}",
+    "ownerId": "{{ .OwnerID }}"
+  },
+  "runnerData": {
+    "os": "{{ .RunnerOS }}",
+    "arch": "{{ .RunnerArch }}",
+    "environment": "{{ .RunnerEnvironment }}"
+  },
+  "workflowData": {
+    "workflowRefPath": "{{ .WorkflowRefPath }}",
+    "inputs": {{ if .WorkflowInputs }}{{ .WorkflowInputs }}{{ else }}{}{{ end }},
+    "branch": "{{ .Branch }}",
+    "event": "{{ .Event }}"
+  },
+  "jobData": {
+    "runNumber": "{{ .RunNumber }}",
+    "runId": "{{ .RunID }}",
+    "status": "{{ .Status }}",
+    "triggeredBy": "{{ .TriggeredBy }}",
+    "startedAt": "{{ .StartedAt }}",
+    "completedAt": "{{ .CompletedAt }}"
+  },
+  "commitData": {
+    "sha": "{{ .CommitSHA }}",
+    "timestamp": "{{ .CommitTimestamp }}"
+  },
+  "organization": {
+    "name": "{{ .OrganizationName }}"
+  },
+  "compliance": {
+    "policyRef": "{{ .PolicyRef }}",
+    "controlIds": [
+      {{- if .ControlIds }}
+      {{- range $i, $id := .ControlIds }}
+      {{- if $i }},{{ end }}
+      "{{ $id }}"
+      {{- end }}
+      {{- else }}
+      "{{ .Owner }}-PROVENANCE-001",
+      "{{ .Owner }}-SBOM-002",
+      "{{ .Owner }}-METADATA-003"
+      {{- end }}
+    ]
+  },
+  "security": {
+    "permissions": {
+      "id-token": "write",
+      "attestations": "write",
+      {{- if eq .Type "container-image" }}
+      {{- if eq .Registry "local" }}
+      "packages": "read",
+      {{- else }}
+      "packages": "write",
+      {{- end }}
+      {{- else }}
+      "packages": "read",
+      {{- end }}
+      "contents": "read"
+    }
+  }
+} 

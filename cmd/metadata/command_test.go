@@ -5,64 +5,131 @@ import (
 	"encoding/json"
 	"os"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 )
 
 func TestMetadataCommand(t *testing.T) {
-	os.Setenv("GITHUB_REPOSITORY", "test-repo")
-	os.Setenv("GITHUB_REPOSITORY_OWNER", "test-owner")
-	os.Setenv("GITHUB_REPOSITORY_ID", "123")
+	// test env vars
+	os.Setenv("GITHUB_REPOSITORY", "test-org/test-repo")
+	os.Setenv("GITHUB_REPOSITORY_ID", "12345")
 	os.Setenv("GITHUB_SERVER_URL", "https://github.com")
-	os.Setenv("GITHUB_REPOSITORY_OWNER_ID", "456")
-	os.Setenv("GITHUB_WORKFLOW_REF", "main")
-	os.Setenv("GITHUB_REF_NAME", "main")
-	os.Setenv("GITHUB_EVENT_NAME", "push")
-	os.Setenv("GITHUB_SHA", "abc1234")
-	os.Setenv("GITHUB_RUN_NUMBER", "1")
-	os.Setenv("GITHUB_RUN_ID", "789")
-	os.Setenv("GITHUB_ACTOR", "test-user")
-	os.Setenv("GITHUB_JOB_STATUS", "success")
-	os.Setenv("INPUT_TEST", "value")
-
+	os.Setenv("GITHUB_REPOSITORY_OWNER", "test-org")
+	os.Setenv("GITHUB_REPOSITORY_OWNER_ID", "67890")
 	os.Setenv("RUNNER_OS", "Linux")
 	os.Setenv("RUNNER_ARCH", "X64")
 	os.Setenv("RUNNER_ENVIRONMENT", "github-hosted")
+	os.Setenv("GITHUB_WORKFLOW_REF", "test-org/test-repo/.github/workflows/test.yml@main")
+	os.Setenv("GITHUB_REF_NAME", "main")
+	os.Setenv("GITHUB_EVENT_NAME", "push")
+	os.Setenv("GITHUB_RUN_NUMBER", "123")
+	os.Setenv("GITHUB_RUN_ID", "456")
+	os.Setenv("GITHUB_JOB_STATUS", "success")
+	os.Setenv("GITHUB_ACTOR", "test-user")
+	os.Setenv("GITHUB_SHA", "abcdef123456")
+	os.Setenv("GITHUB_ORGANIZATION", "test-org")
+	os.Setenv("POLICY_REF", "test-policy")
+	os.Setenv("CONTROL_IDS", "test-control")
 
-	t.Run("generates valid metadata", func(t *testing.T) {
-		var buf bytes.Buffer
+	now := time.Now().UTC()
+	os.Setenv("GITHUB_JOB_STARTED_AT", now.Format(time.RFC3339))
+	os.Setenv("GITHUB_JOB_COMPLETED_AT", now.Add(time.Minute).Format(time.RFC3339))
+	os.Setenv("GITHUB_EVENT_TIMESTAMP", now.Format(time.RFC3339))
 
-		cmd := NewCommand()
-		cmd.SetOut(&buf)
-		cmd.SetErr(&buf)
+	tests := []struct {
+		name    string
+		args    []string
+		wantErr bool
+	}{
+		{
+			name: "container image",
+			args: []string{
+				"--type", "image",
+				"--subject-name", "ghcr.io/test-org/test-repo",
+				"--subject-digest", "sha256:test",
+			},
+		},
+		{
+			name: "blob",
+			args: []string{
+				"--type", "blob",
+				"--subject-path", "test-file.txt",
+			},
+		},
+		{
+			name: "container image without digest",
+			args: []string{
+				"--type", "image",
+				"--subject-name", "ghcr.io/test-org/test-repo",
+			},
+			wantErr: true,
+		},
+		{
+			name: "container image without subject name",
+			args: []string{
+				"--type", "image",
+				"--subject-digest", "sha256:test",
+			},
+			wantErr: true,
+		},
+		{
+			name: "blob without subject path",
+			args: []string{
+				"--type", "blob",
+			},
+			wantErr: true,
+		},
+	}
 
-		cmd.SetArgs([]string{
-			"--subject-name", "test-image",
-			"--digest", "sha256:123",
-			"--registry", "ghcr.io",
-			"--policy-ref", "https://example.com/policy",
-			"--control-ids", "TEST-001,TEST-002",
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			cmd := NewCommand()
+			buf := new(bytes.Buffer)
+			cmd.SetOut(buf)
+			cmd.SetArgs(tt.args)
+
+			err := cmd.Execute()
+			if tt.wantErr {
+				assert.Error(t, err)
+				return
+			}
+			assert.NoError(t, err)
+
+			// verify valid JSON
+			var result map[string]interface{}
+			err = json.Unmarshal(buf.Bytes(), &result)
+			assert.NoError(t, err)
+
+			// verify artifact exists
+			artifact, ok := result["artifact"].(map[string]interface{})
+			assert.True(t, ok, "artifact field should be a map")
+			assert.NotEmpty(t, artifact["version"])
+			assert.NotEmpty(t, artifact["created"])
+
+			// verify type-specific fields
+			if tt.name == "container image" {
+				assert.Equal(t, "container-image", artifact["type"])
+				assert.Equal(t, "ghcr.io/test-org/test-repo", artifact["fullName"])
+				assert.Equal(t, "sha256:test", artifact["digest"])
+			} else {
+				assert.Equal(t, "blob", artifact["type"])
+				assert.Equal(t, "test-file.txt", artifact["path"])
+			}
+
+			// verify other reqs exist
+			assert.Contains(t, result, "repositoryData")
+			assert.Contains(t, result, "ownerData")
+			assert.Contains(t, result, "runnerData")
+			assert.Contains(t, result, "workflowData")
+			assert.Contains(t, result, "jobData")
+			assert.Contains(t, result, "commitData")
+			assert.Contains(t, result, "organization")
+			assert.Contains(t, result, "compliance")
+			assert.Contains(t, result, "security")
 		})
+	}
 
-		err := cmd.Execute()
-		assert.NoError(t, err)
-
-		output := buf.String()
-		assert.NotEmpty(t, output)
-
-		var result map[string]interface{}
-		err = json.Unmarshal([]byte(output), &result)
-		assert.NoError(t, err)
-
-		assert.Contains(t, result, "artifact")
-		assert.Contains(t, result, "repositoryData")
-		assert.Contains(t, result, "security")
-
-		artifact := result["artifact"].(map[string]interface{})
-		assert.Equal(t, "abc1234-1", artifact["version"])
-		assert.Equal(t, "sha256:123", artifact["digest"])
-		assert.Equal(t, "container-image", artifact["type"])
-		assert.Equal(t, "ghcr.io", artifact["registry"])
-		assert.Equal(t, "test-image", artifact["fullName"])
-	})
+	// cleanup env vars
+	os.Clearenv()
 }

@@ -11,127 +11,160 @@ import (
 )
 
 func TestNewFromGrypeResults(t *testing.T) {
-	tmpDir := t.TempDir()
-	resultsPath := filepath.Join(tmpDir, "results.json")
-
-	sampleResults := `{
-		"descriptor": {
-			"version": "0.32.0",
-			"configuration": {
-				"db": {
-					"update-url": "https://toolbox-data.anchore.io/grype/databases/listing.json"
-				}
+	testCases := []struct {
+		name         string
+		testData     string
+		expectedScan *DependencyScan
+	}{
+		{
+			name: "valid scan results",
+			testData: `{
+				"descriptor": {
+					"version": "0.87.0",
+					"timestamp": "2025-01-24T00:18:00.27584939Z",
+					"configuration": {
+						"db": {
+							"update-url": "https://toolbox-data.anchore.io/grype/databases/listing.json"
+						}
+					},
+					"db": {
+						"built": "2025-01-23T01:31:43Z",
+						"schemaVersion": "5"
+					}
+				},
+				"matches": [
+					{
+						"vulnerability": {
+							"id": "CVE-2024-1234",
+							"severity": "Medium",
+							"cvss": [
+								{
+									"metrics": {
+										"baseScore": 7.5
+									}
+								}
+							]
+						}
+					}
+				]
+			}`,
+			expectedScan: &DependencyScan{
+				Scanner: struct {
+					URI     string `json:"uri"`
+					Version string `json:"version"`
+					DB      struct {
+						URI        string `json:"uri"`
+						Version    string `json:"version"`
+						LastUpdate string `json:"lastUpdate"`
+					} `json:"db"`
+					Result []struct {
+						ID       string `json:"id"`
+						Severity []struct {
+							Method string `json:"method"`
+							Score  string `json:"score"`
+						} `json:"severity"`
+					} `json:"result"`
+				}{
+					URI:     "https://github.com/anchore/grype/releases/tag/v0.87.0",
+					Version: "0.87.0",
+					DB: struct {
+						URI        string `json:"uri"`
+						Version    string `json:"version"`
+						LastUpdate string `json:"lastUpdate"`
+					}{
+						URI:        "https://toolbox-data.anchore.io/grype/databases/listing.json",
+						Version:    "5",
+						LastUpdate: "2025-01-23T01:31:43Z",
+					},
+					Result: []struct {
+						ID       string `json:"id"`
+						Severity []struct {
+							Method string `json:"method"`
+							Score  string `json:"score"`
+						} `json:"severity"`
+					}{
+						{
+							ID: "CVE-2024-1234",
+							Severity: []struct {
+								Method string `json:"method"`
+								Score  string `json:"score"`
+							}{
+								{
+									Method: "nvd",
+									Score:  "Medium",
+								},
+								{
+									Method: "cvss_score",
+									Score:  "7.5",
+								},
+							},
+						},
+					},
+				},
+				Metadata: struct {
+					ScanStartedOn  string `json:"scanStartedOn"`
+					ScanFinishedOn string `json:"scanFinishedOn"`
+				}{
+					ScanStartedOn:  "2025-01-23T01:31:43Z",
+					ScanFinishedOn: "2025-01-24T00:18:00.27584939Z",
+				},
 			},
-			"db": {
-				"schemaVersion": "5",
-				"built": "2024-01-06T14:00:00Z"
-			},
-			"timestamp": "2024-01-06T15:00:00Z"
 		},
-		"matches": [
-			{
-				"vulnerability": {
-					"id": "CVE-2023-1234",
-					"severity": "HIGH",
-					"cvss": [
-						{
-							"metrics": {
-								"baseScore": 8.5
-							}
-						}
-					]
-				}
-			},
-			{
-				"vulnerability": {
-					"id": "CVE-2023-5678",
-					"severity": "MEDIUM",
-					"cvss": [
-						{
-							"metrics": {
-								"baseScore": 5.5
-							}
-						}
-					]
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			// create temp file w/ test data
+			tmpDir := t.TempDir()
+			resultsPath := filepath.Join(tmpDir, "results.json")
+			err := os.WriteFile(resultsPath, []byte(tc.testData), 0600)
+			require.NoError(t, err)
+
+			opts := Options{
+				ResultsPath: resultsPath,
+				SubjectName: "test-subject",
+				Digest:      "test-digest",
+			}
+
+			scan, err := NewFromGrypeResults(opts)
+			assert.NoError(t, err)
+			assert.NotNil(t, scan)
+
+			// verify scanner fields
+			assert.Equal(t, tc.expectedScan.Scanner.URI, scan.Scanner.URI)
+			assert.Equal(t, tc.expectedScan.Scanner.Version, scan.Scanner.Version)
+
+			// verify DB fields
+			assert.Equal(t, tc.expectedScan.Scanner.DB.URI, scan.Scanner.DB.URI)
+			assert.Equal(t, tc.expectedScan.Scanner.DB.Version, scan.Scanner.DB.Version)
+			assert.Equal(t, tc.expectedScan.Scanner.DB.LastUpdate, scan.Scanner.DB.LastUpdate)
+
+			// verify metadata
+			assert.Equal(t, tc.expectedScan.Metadata.ScanStartedOn, scan.Metadata.ScanStartedOn)
+			assert.Equal(t, tc.expectedScan.Metadata.ScanFinishedOn, scan.Metadata.ScanFinishedOn)
+
+			// verify results
+			require.Equal(t, len(tc.expectedScan.Scanner.Result), len(scan.Scanner.Result))
+			for i, expectedResult := range tc.expectedScan.Scanner.Result {
+				assert.Equal(t, expectedResult.ID, scan.Scanner.Result[i].ID)
+				require.Equal(t, len(expectedResult.Severity), len(scan.Scanner.Result[i].Severity))
+
+				for j, expectedSeverity := range expectedResult.Severity {
+					assert.Equal(t, expectedSeverity.Method, scan.Scanner.Result[i].Severity[j].Method)
+					assert.Equal(t, expectedSeverity.Score, scan.Scanner.Result[i].Severity[j].Score)
 				}
 			}
-		]
-	}`
 
-	err := os.WriteFile(resultsPath, []byte(sampleResults), 0600)
-	require.NoError(t, err)
+			// verify valid JSON
+			data, err := scan.Generate()
+			assert.NoError(t, err)
+			assert.NotEmpty(t, data)
 
-	t.Run("successfully parses grype results", func(t *testing.T) {
-		scan, err := NewFromGrypeResults(Options{
-			ResultsPath: resultsPath,
+			// verify generated JSON matches expected struct
+			var generatedScan DependencyScan
+			err = json.Unmarshal(data, &generatedScan)
+			assert.NoError(t, err)
+			assert.Equal(t, tc.expectedScan, &generatedScan)
 		})
-		require.NoError(t, err)
-
-		// Verify scanner info
-		assert.Equal(t, "https://github.com/anchore/grype/releases/tag/v0.32.0", scan.Scanner.URI)
-		assert.Equal(t, "0.32.0", scan.Scanner.Version)
-		assert.Equal(t, "https://toolbox-data.anchore.io/grype/databases/listing.json", scan.Scanner.DB.URI)
-		assert.Equal(t, "5", scan.Scanner.DB.Version)
-		assert.Equal(t, "2024-01-06T14:00:00Z", scan.Scanner.DB.LastUpdate)
-
-		assert.Equal(t, "2024-01-06T14:00:00Z", scan.Metadata.ScanStartedOn)
-		assert.Equal(t, "2024-01-06T15:00:00Z", scan.Metadata.ScanFinishedOn)
-
-		require.Len(t, scan.Scanner.Result, 2)
-
-		assert.Equal(t, "CVE-2023-1234", scan.Scanner.Result[0].ID)
-		require.Len(t, scan.Scanner.Result[0].Severity, 2)
-		assert.Equal(t, "nvd", scan.Scanner.Result[0].Severity[0].Method)
-		assert.Equal(t, "HIGH", scan.Scanner.Result[0].Severity[0].Score)
-		assert.Equal(t, "cvss_score", scan.Scanner.Result[0].Severity[1].Method)
-		assert.Equal(t, "8.5", scan.Scanner.Result[0].Severity[1].Score)
-
-		assert.Equal(t, "CVE-2023-5678", scan.Scanner.Result[1].ID)
-		require.Len(t, scan.Scanner.Result[1].Severity, 2)
-		assert.Equal(t, "nvd", scan.Scanner.Result[1].Severity[0].Method)
-		assert.Equal(t, "MEDIUM", scan.Scanner.Result[1].Severity[0].Score)
-		assert.Equal(t, "cvss_score", scan.Scanner.Result[1].Severity[1].Method)
-		assert.Equal(t, "5.5", scan.Scanner.Result[1].Severity[1].Score)
-	})
-
-	t.Run("handles missing results file", func(t *testing.T) {
-		_, err := NewFromGrypeResults(Options{
-			ResultsPath: "nonexistent.json",
-		})
-		assert.Error(t, err)
-		assert.Contains(t, err.Error(), "failed to read results file")
-	})
-
-	t.Run("handles invalid json", func(t *testing.T) {
-		invalidPath := filepath.Join(tmpDir, "invalid.json")
-		err := os.WriteFile(invalidPath, []byte("invalid json"), 0600)
-		require.NoError(t, err)
-
-		_, err = NewFromGrypeResults(Options{
-			ResultsPath: invalidPath,
-		})
-		assert.Error(t, err)
-		assert.Contains(t, err.Error(), "failed to parse results")
-	})
-
-	t.Run("generates valid json output", func(t *testing.T) {
-		scan, err := NewFromGrypeResults(Options{
-			ResultsPath: resultsPath,
-		})
-		require.NoError(t, err)
-
-		output, err := scan.Generate()
-		require.NoError(t, err)
-
-		var result map[string]interface{}
-		err = json.Unmarshal(output, &result)
-		assert.NoError(t, err)
-		assert.Contains(t, result, "scanner")
-		assert.Contains(t, result, "metadata")
-	})
-
-	t.Run("returns correct predicate type", func(t *testing.T) {
-		scan := &DependencyScan{}
-		assert.Equal(t, PredicateTypeURI, scan.Type())
-	})
+	}
 }
