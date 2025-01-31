@@ -12,21 +12,17 @@ jobs:
       contents: read
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
-
       - name: Download gh-attest-util
         run: |
-          gh release download --pattern 'gh-attest-util.tar.gz' --repo laitrio/gh-attest-util --latest
+          gh release download --pattern 'gh-attest-util.tar.gz' --repo ${{ github.repository }}
           tar -xzf gh-attest-util.tar.gz
-
       - name: Install Binary
         run: |
           chmod +x gh-attest-util
           sudo mv gh-attest-util /usr/local/bin/
           gh-attest-util --help
-
       - name: Create test file
         run: echo "test content" > test-file.txt
-
       - name: Generate blob metadata
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -36,7 +32,6 @@ jobs:
             --type blob \
             --subject-path test-file.txt \
             --output blob-metadata.json
-
       - name: Verify blob metadata
         run: |
           echo "Generated blob metadata:"
