@@ -7,7 +7,7 @@ RUN go mod download
 ARG TARGETOS TARGETARCH
 RUN CGO_ENABLED=0 GOOS=$TARGETOS GOARCH=$TARGETARCH go build -ldflags "-X main.version=${VERSION:-dev}" -o gh-attest-util .
 
-FROM alpine:3.19
+FROM alpine:3.21
 LABEL org.opencontainers.image.title="gh-attest-util" \
       org.opencontainers.image.description="GitHub Attestation Utility" \
       org.opencontainers.image.vendor="YourOrg" \
