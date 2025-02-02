@@ -1,0 +1,23 @@
+{
+  "_type": "https://in-toto.io/Statement/v1",
+  "subject": [{
+    "name": "test-image",
+    "digest": {"sha256": "abc123"}
+  }],
+  "predicateType": "https://slsa.dev/verification_summary/v1",
+  "predicate": {
+    "verifier": {
+      "id": "test-verifier"
+    },
+    "timeVerified": "2024-03-14T00:00:00Z",
+    "resourceUri": "test://artifact",
+    "policyEvaluationResults": [
+      {
+        "type": "https://slsa.dev/policy/v1",
+        "result": "PASSED"
+      }
+    ],
+    "verifiedLevels": ["SLSA_BUILD_LEVEL_3"],
+    "slsaVersion": "1.0"
+  }
+}

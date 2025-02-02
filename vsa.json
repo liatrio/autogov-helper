@@ -1,0 +1,29 @@
+{
+  "_type": "https://in-toto.io/Statement/v1",
+  "subject": [
+    {
+      "name": "test-container",
+      "digest": {
+        "sha256": "abc123def456"
+      }
+    }
+  ],
+  "predicateType": "https://slsa.dev/verification_summary/v1",
+  "predicate": {
+    "verifier": {
+      "id": "test-verifier"
+    },
+    "timeVerified": "2025-02-02T06:33:49Z",
+    "resourceUri": "https://ghcr.io/test/container",
+    "policyEvaluationResults": [
+      {
+        "type": "https://slsa.dev/policy/v1",
+        "result": "PASSED"
+      }
+    ],
+    "verifiedLevels": [
+      "SLSA_BUILD_LEVEL_3"
+    ],
+    "slsaVersion": "1.0"
+  }
+}
