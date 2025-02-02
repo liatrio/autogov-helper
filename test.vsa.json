@@ -1,0 +1,24 @@
+{
+  "_type": "https://in-toto.io/Statement/v1",
+  "subject": [
+    {
+      "name": "ghcr.io/liatrio/demo-gh-autogov-workflows",
+      "digest": {
+        "sha256": "abc123..."
+      }
+    }
+  ],
+  "predicateType": "https://slsa.dev/verification_summary/v1",
+  "predicate": {
+    "verifier": {
+      "id": "https://github.com/liatrio/gh-attest-util"
+    },
+    "timeVerified": "2025-02-02T05:09:19Z",
+    "resourceUri": "https://github.com/liatrio/demo-gh-autogov-workflows",
+    "verificationResult": "PASSED",
+    "verifiedLevels": [
+      "SLSA_BUILD_LEVEL_3"
+    ],
+    "slsaVersion": "1.0"
+  }
+}

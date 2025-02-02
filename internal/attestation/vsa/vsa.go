@@ -12,7 +12,7 @@ import (
 )
 
 // VSA represents a Verification Summary Attestation.
-// these are created by verifier tools (like slsa-verifier) that check slsa compliance,
+// These are created by verifier tools (like slsa-verifier) that check SLSA compliance,
 // not by signing tools like cosign which only handle attestation signatures.
 type VSA struct {
 	Type    string `json:"_type"`
@@ -25,20 +25,30 @@ type VSA struct {
 		Verifier struct {
 			ID string `json:"id"`
 		} `json:"verifier"`
-		TimeVerified       string         `json:"timeVerified"`
-		ResourceURI        string         `json:"resourceUri"`
-		VerificationResult string         `json:"verificationResult"`
-		VerifiedLevels     []string       `json:"verifiedLevels"`
-		DependencyLevels   map[string]int `json:"dependencyLevels,omitempty"`
-		SlsaVersion        string         `json:"slsaVersion,omitempty"`
+		TimeVerified            string `json:"timeVerified"`
+		ResourceURI             string `json:"resourceUri"`
+		PolicyEvaluationResults []struct {
+			Type   string `json:"type"`
+			Result string `json:"result"`
+		} `json:"policyEvaluationResults"`
+		VerifiedLevels   []string       `json:"verifiedLevels"`
+		DependencyLevels map[string]int `json:"dependencyLevels,omitempty"`
+		SlsaVersion      string         `json:"slsaVersion"`
 	} `json:"predicate"`
 }
 
 // returns the highest slsa build level from a vsa's verifiedLevels
 func (v *VSA) GetBuildLevel() (int, error) {
-	// consider lvls if verification passed
-	if v.Predicate.VerificationResult != "PASSED" {
-		return -1, fmt.Errorf("VSA verification result is not PASSED")
+	// consider lvls if policy evaluation passed
+	foundPassedPolicy := false
+	for _, result := range v.Predicate.PolicyEvaluationResults {
+		if result.Type == "https://slsa.dev/policy/v1" && result.Result == "PASSED" {
+			foundPassedPolicy = true
+			break
+		}
+	}
+	if !foundPassedPolicy {
+		return -1, fmt.Errorf("VSA policy evaluation did not pass")
 	}
 
 	maxLevel := -1
@@ -111,32 +121,51 @@ func (v *VSA) VerifyBuildLevel(expectedLevel int) error {
 		return fmt.Errorf("VSA build level L%d is lower than expected level L%d", level, expectedLevel)
 	}
 
+	// Verify policy evaluation results
+	if len(v.Predicate.PolicyEvaluationResults) == 0 {
+		return fmt.Errorf("VSA missing policy evaluation results")
+	}
+
+	foundSLSAPolicy := false
+	for _, result := range v.Predicate.PolicyEvaluationResults {
+		if result.Type == "https://slsa.dev/policy/v1" {
+			foundSLSAPolicy = true
+			if result.Result != "PASSED" {
+				return fmt.Errorf("SLSA policy evaluation failed with result: %s", result.Result)
+			}
+		}
+	}
+
+	if !foundSLSAPolicy {
+		return fmt.Errorf("VSA missing SLSA policy evaluation result")
+	}
+
 	return nil
 }
 
 // defines parameters for generating a new VSA
 type Options struct {
-	SubjectName     string
-	SubjectDigest   string
-	VerifierID      string
-	Result          string // PASSED/FAILED
-	Levels          []string
-	ResourceURI     string
-	SlsaVersion     string
-	TimeVerified    time.Time
+	SubjectName   string
+	SubjectDigest string
+	VerifierID    string
+	Result        string // PASSED/FAILED
+	Levels        []string
+	ResourceURI   string
+	SlsaVersion   string
+	TimeVerified  time.Time
 }
 
 // creates a new VSA from generation options
 func New(opts Options) (*VSA, error) {
 	data := template.VSATemplateData{
-		SubjectName:       opts.SubjectName,
-		DigestAlgorithm:   "sha256",
-		Digest:            opts.SubjectDigest,
-		VerifierID:        opts.VerifierID,
-		TimeVerified:      opts.TimeVerified.Format(time.RFC3339),
-		ResourceURI:       opts.ResourceURI,
+		SubjectName:        opts.SubjectName,
+		DigestAlgorithm:    "sha256",
+		Digest:             strings.TrimPrefix(opts.SubjectDigest, "sha256:"),
+		VerifierID:         opts.VerifierID,
+		TimeVerified:       opts.TimeVerified.Format(time.RFC3339),
+		ResourceURI:        opts.ResourceURI,
 		VerificationResult: opts.Result,
-		VerifiedLevels:    opts.Levels,
+		VerifiedLevels:     opts.Levels,
 	}
 
 	vsaBytes, err := template.RenderTemplate("vsa", data)

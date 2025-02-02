@@ -2,30 +2,27 @@
   "_type": "https://in-toto.io/Statement/v1",
   "subject": [
     {
-      "name": "{{ .SubjectName }}",
+      "name": "test-image",
       "digest": {
-        "{{ .DigestAlgorithm }}": "{{ .Digest }}"
+        "sha256": "d5c3983be448b93da88c8a73f9ef6ed4abfe3d0f66b9a1b0fcb5b0f6570285f5"
       }
     }
   ],
   "predicateType": "https://slsa.dev/verification_summary/v1",
   "predicate": {
     "verifier": {
-      "id": "{{ .VerifierID }}"
+      "id": "gha-verifier-v1"
     },
-    "timeVerified": "{{ .TimeVerified }}",
-    "resourceUri": "{{ .ResourceURI }}",
+    "timeVerified": "2025-02-02T05:49:19Z",
+    "resourceUri": "ghcr.io/test/image",
     "policyEvaluationResults": [
       {
         "type": "https://slsa.dev/policy/v1",
-        "result": "{{ .VerificationResult }}"
+        "result": "PASSED"
       }
     ],
     "verifiedLevels": [
-      {{- range $i, $level := .VerifiedLevels -}}
-      {{- if $i -}},{{- end -}}
-      "{{- $level -}}"
-      {{- end -}}
+      "SLSA_BUILD_LEVEL_3"
     ],
     "slsaVersion": "1.0"
   }

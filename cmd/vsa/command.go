@@ -16,7 +16,7 @@ func NewCommand() *cobra.Command {
 		// verify
 		vsaPath       string
 		expectedLevel int
-		
+
 		// generate
 		subjectName   string
 		subjectDigest string
@@ -25,9 +25,9 @@ func NewCommand() *cobra.Command {
 		levels        []string
 		resourceURI   string
 		slsaVersion   string
-		
+
 		// shared
-		outputFile    string
+		outputFile string
 	)
 
 	cmd := &cobra.Command{
@@ -48,14 +48,14 @@ func NewCommand() *cobra.Command {
 		Short: "Generate a new VSA",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			opts := vsa.Options{
-				SubjectName:     subjectName,
-				SubjectDigest:   subjectDigest,
-				VerifierID:      verifierID,
-				Result:          result,
-				Levels:          levels,
-				ResourceURI:     resourceURI,
-				SlsaVersion:     slsaVersion,
-				TimeVerified:    time.Now().UTC(),
+				SubjectName:   subjectName,
+				SubjectDigest: subjectDigest,
+				VerifierID:    verifierID,
+				Result:        result,
+				Levels:        levels,
+				ResourceURI:   resourceURI,
+				SlsaVersion:   slsaVersion,
+				TimeVerified:  time.Now().UTC(),
 			}
 
 			vsaObj, err := vsa.New(opts)
