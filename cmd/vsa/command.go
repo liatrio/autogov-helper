@@ -18,24 +18,23 @@ func NewCommand() *cobra.Command {
 		Use:   "vsa",
 		Short: "Verify SLSA build level from VSA",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			// Read VSA file
+			// read vsa file
 			vsaData, err := os.ReadFile(vsaPath)
 			if err != nil {
 				return fmt.Errorf("failed to read VSA file: %w", err)
 			}
 
-			// Parse VSA
+			// parse vsa
 			vsaObj, err := vsa.NewVSAFromBytes(vsaData)
 			if err != nil {
 				return fmt.Errorf("failed to parse VSA: %w", err)
 			}
 
-			// Verify build level
+			// verify build lvl
 			if err := vsaObj.VerifyBuildLevel(expectedLevel); err != nil {
 				return fmt.Errorf("VSA verification failed: %w", err)
 			}
 
-			// Write output if requested
 			if outputFile != "" {
 				if err := os.WriteFile(outputFile, vsaData, 0600); err != nil {
 					return fmt.Errorf("failed to write output file: %w", err)
