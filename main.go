@@ -3,8 +3,9 @@ package main
 import (
 	"os"
 
-	"gh-attest-util/cmd/depscan"
 	"gh-attest-util/cmd/metadata"
+	"gh-attest-util/cmd/testresult"
+	"gh-attest-util/cmd/vsa"
 
 	"github.com/spf13/cobra"
 )
@@ -17,8 +18,9 @@ func main() {
 	}
 
 	cmd.AddCommand(
-		depscan.NewCommand(),
+		testresult.NewCommand(),
 		metadata.NewCommand(),
+		vsa.NewCommand(),
 	)
 
 	if err := cmd.Execute(); err != nil {

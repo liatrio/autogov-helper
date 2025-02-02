@@ -3,6 +3,7 @@ package validation
 import (
 	"context"
 	"fmt"
+	"gh-attest-util/internal/attestation/vsa"
 	"io"
 	"log"
 	"net/http"
@@ -143,7 +144,7 @@ func fetchSchemaContent(schemaName string) (string, error) {
 	return schemaContent, nil
 }
 
-// validates JSON against schema from policy repo
+// validates json against schema from policy repo
 func ValidateJSON(data []byte, schemaName string) error {
 	schemaContent, err := fetchSchemaContent(schemaName)
 	if err != nil {
@@ -176,7 +177,28 @@ func ValidateMetadata(data []byte) error {
 	return ValidateJSON(data, "metadata.json")
 }
 
-// validates a dependency scan attestation against the schema
+// validates a dependency scan attestation against the test-result schema
 func ValidateDepscan(data []byte) error {
-	return ValidateJSON(data, "dependency-vulnerability.json")
+	return ValidateJSON(data, "test-result.json")
+}
+
+// validates a verification summary attestation against the schema
+func ValidateVSA(data []byte) error {
+	// validate against schema
+	if err := ValidateJSON(data, "verification-summary.json"); err != nil {
+		return fmt.Errorf("schema validation failed: %w", err)
+	}
+
+	// parse / validate using VSA package
+	vsa, err := vsa.NewVSAFromBytes(data)
+	if err != nil {
+		return fmt.Errorf("failed to parse VSA: %w", err)
+	}
+
+	// verify valid vsa
+	if err := vsa.VerifyBuildLevel(1); err != nil {
+		return fmt.Errorf("VSA verification failed: %w", err)
+	}
+
+	return nil
 }

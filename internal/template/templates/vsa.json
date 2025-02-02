@@ -1,0 +1,27 @@
+{
+  "_type": "https://in-toto.io/Statement/v1",
+  "subject": [
+    {
+      "name": "{{ .SubjectName }}",
+      "digest": {
+        "{{ .DigestAlgorithm }}": "{{ .Digest }}"
+      }
+    }
+  ],
+  "predicateType": "https://slsa.dev/verification_summary/v1",
+  "predicate": {
+    "verifier": {
+      "id": "{{ .VerifierID }}"
+    },
+    "timeVerified": "{{ .TimeVerified }}",
+    "resourceUri": "{{ .ResourceURI }}",
+    "verificationResult": "{{ .VerificationResult }}",
+    "verifiedLevels": [
+      {{- range $i, $level := .VerifiedLevels -}}
+      {{- if $i -}},{{- end -}}
+      "{{- $level -}}"
+      {{- end -}}
+    ],
+    "slsaVersion": "1.0"
+  }
+}

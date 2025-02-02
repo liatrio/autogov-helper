@@ -1,0 +1,23 @@
+{
+    "_type": "https://in-toto.io/Statement/v1",
+    "subject": [{
+        "name": "test-artifact",
+        "digest": {"sha256": "abc123"}
+    }],
+    "predicateType": "https://slsa.dev/verification_summary/v1",
+    "predicate": {
+        "verifier": {
+            "id": "test-verifier"
+        },
+        "timeVerified": "2024-01-01T00:00:00Z",
+        "resourceUri": "test://artifact",
+        "verificationResult": "PASSED",
+        "verifiedLevels": [
+            "SLSA_BUILD_LEVEL_3",
+            "SLSA_BUILD_LEVEL_2", 
+            "SLSA_BUILD_LEVEL_1",
+            "SLSA_BUILD_LEVEL_0"
+        ],
+        "slsaVersion": "1.0"
+    }
+}

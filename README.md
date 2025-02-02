@@ -27,6 +27,20 @@ Generates a standardized metadata attestation including:
 - Compliance metadata
 - Security permissions
 
+### VSA Verification
+
+```bash
+gh-attest-util vsa --vsa attestation.vsa.json --level 3
+```
+
+Verifies a Verification Summary Attestation (VSA) against SLSA v1.0 build levels (L0-L3). Features:
+
+- Validates VSA format and structure
+- Verifies SLSA build level compliance
+- Supports all SLSA v1.0 build track levels (L0-L3)
+- Validates verifier authenticity
+- Optional output of verified VSA
+
 ### Dependency Scan Attestation
 
 ```yaml

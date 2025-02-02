@@ -175,7 +175,7 @@ func setupTestEnv(t *testing.T) (*httptest.Server, func()) {
 				},
 				"required": ["_type", "subject", "predicateType", "predicate"]
 			}`
-		case "/schemas/dependency-vulnerability.json":
+		case "/schemas/test-result.json":
 			schema = `{
 				"$schema": "http://json-schema.org/draft-07/schema#",
 				"type": "object",
@@ -189,15 +189,11 @@ func setupTestEnv(t *testing.T) (*httptest.Server, func()) {
 						"items": {
 							"type": "object",
 							"properties": {
-								"name": {
-									"type": "string"
-								},
+								"name": { "type": "string" },
 								"digest": {
 									"type": "object",
 									"properties": {
-										"sha256": {
-											"type": "string"
-										}
+										"sha256": { "type": "string" }
 									},
 									"required": ["sha256"]
 								}
@@ -207,48 +203,45 @@ func setupTestEnv(t *testing.T) (*httptest.Server, func()) {
 					},
 					"predicateType": {
 						"type": "string",
-						"const": "https://in-toto.io/attestation/vulns/v0.2"
+						"const": "https://in-toto.io/attestation/test-result/v0.1"
 					},
 					"predicate": {
 						"type": "object",
 						"properties": {
-							"scanner": {
-								"type": "object",
-								"properties": {
-									"uri": { "type": "string" },
-									"version": { "type": "string" },
-									"db": {
-										"type": "object",
-										"properties": {
-											"name": { "type": "string" },
-											"version": { "type": "string" },
-											"lastUpdated": { "type": "string", "format": "date-time" }
-										},
-										"required": ["name", "version", "lastUpdated"]
-									},
-									"result": {
-										"type": "array",
-										"items": {
+							"result": {
+								"type": "string",
+								"enum": ["PASSED", "WARNED", "FAILED"]
+							},
+							"configuration": {
+								"type": "array",
+								"items": {
+									"type": "object",
+									"properties": {
+										"name": { "type": "string" },
+										"downloadLocation": { "type": "string" },
+										"digest": {
 											"type": "object",
-											"properties": {
-												"id": { "type": "string" },
-												"severity": {
-													"type": "object",
-													"properties": {
-														"method": { "type": "string" },
-														"score": { "type": "string" }
-													},
-													"required": ["method", "score"]
-												}
-											},
-											"required": ["id", "severity"]
+											"additionalProperties": { "type": "string" }
 										}
-									}
-								},
-								"required": ["uri", "version", "db", "result"]
+									},
+									"required": ["name", "downloadLocation", "digest"]
+								}
+							},
+							"url": { "type": "string" },
+							"passedTests": {
+								"type": "array",
+								"items": { "type": "string" }
+							},
+							"warnedTests": {
+								"type": "array",
+								"items": { "type": "string" }
+							},
+							"failedTests": {
+								"type": "array",
+								"items": { "type": "string" }
 							}
 						},
-						"required": ["scanner"]
+						"required": ["result", "configuration"]
 					}
 				},
 				"required": ["_type", "subject", "predicateType", "predicate"]
@@ -392,26 +385,20 @@ func TestValidateDepscan(t *testing.T) {
 					"sha256": "abc123"
 				}
 			}],
-			"predicateType": "https://in-toto.io/attestation/vulns/v0.2",
+			"predicateType": "https://in-toto.io/attestation/test-result/v0.1",
 			"predicate": {
-				"scanner": {
-					"uri": "https://github.com/anchore/grype/releases/tag/v0.74.7",
-					"version": "0.74.7",
-					"db": {
-						"name": "grype",
-						"version": "1.5",
-						"lastUpdated": "2024-01-27T19:48:49Z"
-					},
-					"result": [
-						{
-							"id": "CVE-2024-1234",
-							"severity": {
-								"method": "CVSSv3",
-								"score": "7.5"
-							}
-						}
-					]
-				}
+				"result": "WARNED",
+				"configuration": [{
+					"name": "grype",
+					"downloadLocation": "https://github.com/anchore/grype/releases/tag/v0.74.7",
+					"digest": {
+						"version": "0.74.7",
+						"dbVersion": "1.5",
+						"dbBuilt": "2024-01-27T19:48:49Z"
+					}
+				}],
+				"url": "https://toolbox-data.anchore.io/grype/databases/listing.json",
+				"warnedTests": ["vulnerability-CVE-2024-1234"]
 			}
 		}`)
 
@@ -428,13 +415,13 @@ func TestValidateDepscan(t *testing.T) {
 					"sha256": "abc123"
 				}
 			}],
-			"predicateType": "https://in-toto.io/attestation/vulns/v0.2",
+			"predicateType": "https://in-toto.io/attestation/test-result/v0.1",
 			"predicate": {
-				"scanner": {
-					"uri": "https://github.com/anchore/grype/releases/tag/v0.74.7",
-					"version": "0.74.7",
-					"result": []
-				}
+				"result": "INVALID",
+				"configuration": [{
+					"name": "grype",
+					"downloadLocation": "https://github.com/anchore/grype/releases/tag/v0.74.7"
+				}]
 			}
 		}`)
 

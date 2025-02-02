@@ -1,28 +1,28 @@
-package depscan
+package testresult
 
 import (
 	"fmt"
 	"os"
 
-	depscan "gh-attest-util/internal/attestation/depscan"
+	testresult "gh-attest-util/internal/attestation/testresult"
 
 	"github.com/spf13/cobra"
 )
 
 func NewCommand() *cobra.Command {
-	var opts depscan.Options
+	var opts testresult.Options
 	var outputFile string
 
 	cmd := &cobra.Command{
 		Use:   "depscan",
 		Short: "Generate dependency scan predicate",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			scan, err := depscan.NewFromGrypeResults(opts)
+			result, err := testresult.NewFromGrypeResults(opts)
 			if err != nil {
 				return fmt.Errorf("failed to process scan results: %w", err)
 			}
 
-			output, err := scan.Generate()
+			output, err := result.Generate()
 			if err != nil {
 				return fmt.Errorf("failed to generate predicate: %w", err)
 			}
