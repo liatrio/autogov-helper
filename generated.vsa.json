@@ -1,0 +1,24 @@
+{
+  "_type": "https://in-toto.io/Statement/v1",
+  "subject": [
+    {
+      "name": "test-image",
+      "digest": {
+        "sha256": "d5c3983be448b93da88c8a73f9ef6ed4abfe3d0f66b9a1b0fcb5b0f6570285f5"
+      }
+    }
+  ],
+  "predicateType": "https://slsa.dev/verification_summary/v1",
+  "predicate": {
+    "verifier": {
+      "id": "gha-verifier-v1"
+    },
+    "timeVerified": "2025-02-02T03:37:10Z",
+    "resourceUri": "ghcr.io/test/image",
+    "verificationResult": "PASSED",
+    "verifiedLevels": [
+      "SLSA_BUILD_LEVEL_3"
+    ],
+    "slsaVersion": "1.0"
+  }
+}

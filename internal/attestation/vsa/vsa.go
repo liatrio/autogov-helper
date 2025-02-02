@@ -5,7 +5,9 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+	"time"
 
+	"gh-attest-util/internal/template"
 	"github.com/slsa-framework/slsa-verifier/v2/verifiers/utils"
 )
 
@@ -110,6 +112,39 @@ func (v *VSA) VerifyBuildLevel(expectedLevel int) error {
 	}
 
 	return nil
+}
+
+// defines parameters for generating a new VSA
+type Options struct {
+	SubjectName     string
+	SubjectDigest   string
+	VerifierID      string
+	Result          string // PASSED/FAILED
+	Levels          []string
+	ResourceURI     string
+	SlsaVersion     string
+	TimeVerified    time.Time
+}
+
+// creates a new VSA from generation options
+func New(opts Options) (*VSA, error) {
+	data := template.VSATemplateData{
+		SubjectName:       opts.SubjectName,
+		DigestAlgorithm:   "sha256",
+		Digest:            opts.SubjectDigest,
+		VerifierID:        opts.VerifierID,
+		TimeVerified:      opts.TimeVerified.Format(time.RFC3339),
+		ResourceURI:       opts.ResourceURI,
+		VerificationResult: opts.Result,
+		VerifiedLevels:    opts.Levels,
+	}
+
+	vsaBytes, err := template.RenderTemplate("vsa", data)
+	if err != nil {
+		return nil, fmt.Errorf("failed to render VSA template: %w", err)
+	}
+
+	return NewVSAFromBytes(vsaBytes)
 }
 
 // parses a vsa from json bytes

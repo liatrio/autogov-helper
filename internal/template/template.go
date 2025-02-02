@@ -78,3 +78,15 @@ type DepscanTemplateData struct {
 	Results        string
 	Created        string // for scan finished timestamp
 }
+
+// data for vsa templates
+type VSATemplateData struct {
+	SubjectName        string
+	DigestAlgorithm    string
+	Digest             string
+	VerifierID         string
+	TimeVerified       string
+	ResourceURI        string
+	VerificationResult string
+	VerifiedLevels     []string
+}

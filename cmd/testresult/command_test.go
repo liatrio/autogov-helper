@@ -69,11 +69,11 @@ func TestDepscanCommand(t *testing.T) {
 		err = json.Unmarshal(output.Bytes(), &statement)
 		require.NoError(t, err)
 
-		// Verify statement structure
+		// verify statement
 		assert.Equal(t, "https://in-toto.io/Statement/v1", statement["_type"])
 		assert.Equal(t, "https://in-toto.io/attestation/test-result/v0.1", statement["predicateType"])
 
-		// Verify subject
+		// verify subject
 		subjects := statement["subject"].([]interface{})
 		require.Len(t, subjects, 1)
 		subject := subjects[0].(map[string]interface{})
@@ -81,7 +81,7 @@ func TestDepscanCommand(t *testing.T) {
 		digest := subject["digest"].(map[string]interface{})
 		assert.Equal(t, "abc123", digest["sha256"])
 
-		// Verify predicate
+		// verify predicate
 		predicate := statement["predicate"].(map[string]interface{})
 		assert.Equal(t, "WARNED", predicate["result"])
 

@@ -1,0 +1,25 @@
+{
+  "_type": "https://in-toto.io/Statement/v1",
+  "subject": [
+    {
+      "name": "my-image",
+      "digest": {
+        "sha256": "abc123..."
+      }
+    }
+  ],
+  "predicateType": "https://slsa.dev/verification_summary/v1",
+  "predicate": {
+    "verifier": {
+      "id": "gha-verifier-v1"
+    },
+    "timeVerified": "2025-02-01T12:34:56Z",
+    "resourceUri": "ghcr.io/myorg/myimage",
+    "verificationResult": "PASSED",
+    "verifiedLevels": [
+      "SLSA_BUILD_LEVEL_3",
+      "SLSA_SOURCE_LEVEL_2"
+    ],
+    "slsaVersion": "v1.0"
+  }
+}
