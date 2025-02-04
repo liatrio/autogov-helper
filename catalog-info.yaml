@@ -2,15 +2,14 @@
 apiVersion: backstage.io/v1alpha1
 kind: Component
 metadata:
-  name: gh-attest-util
+  name: autogov-helper
   description: A general purpose utility for GitHub Artifact Attestations
   annotations:
-    github.com/project-slug: liatrio/gh-attest-util
+    github.com/project-slug: liatrio/autogov-helper
   tags:
     - automated-governance
     - golang
 spec:
   type: other
-  lifecycle: experimental
+  lifecycle: in-progress
   owner: tag-autogov
-  system: demo-gh-attest-autogov

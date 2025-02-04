@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"os"
 
-	depscan "gh-attest-util/internal/attestation/depscan"
+	depscan "autogov-helper/internal/attestation/depscan"
 
 	"github.com/spf13/cobra"
 )

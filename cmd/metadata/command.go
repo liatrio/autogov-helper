@@ -6,7 +6,7 @@ import (
 	"strings"
 	"time"
 
-	metadata "gh-attest-util/internal/attestation/metadata"
+	metadata "autogov-helper/internal/attestation/metadata"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
