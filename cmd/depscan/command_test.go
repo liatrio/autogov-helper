@@ -7,7 +7,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"gh-attest-util/cmd/depscan"
+	"autogov-helper/cmd/depscan"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"

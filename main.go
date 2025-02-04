@@ -3,15 +3,15 @@ package main
 import (
 	"os"
 
-	"gh-attest-util/cmd/depscan"
-	"gh-attest-util/cmd/metadata"
+	"autogov-helper/cmd/depscan"
+	"autogov-helper/cmd/metadata"
 
 	"github.com/spf13/cobra"
 )
 
 func main() {
 	cmd := &cobra.Command{
-		Use:   "gh-attest-util",
+		Use:   "autogov-helper",
 		Short: "GitHub Actions attestation utilities",
 		Long:  "GitHub Actions attestation utilities for generating attestations",
 	}

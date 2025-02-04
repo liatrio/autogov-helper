@@ -6,9 +6,9 @@ before:
     - make
 
 builds:
-  - id: gh-attest-util
+  - id: autogov-helper
     main: .
-    binary: gh-attest-util
+    binary: autogov-helper
     env:
       - CGO_ENABLED=0
     goos:
@@ -24,8 +24,8 @@ builds:
 
 dockers:
   - image_templates:
-      - ghcr.io/liatrio/gh-attest-util:{{ .Version }}-amd64
-      - ghcr.io/liatrio/gh-attest-util:latest-amd64
+      - ghcr.io/liatrio/autogov-helper:{{ .Version }}-amd64
+      - ghcr.io/liatrio/autogov-helper:latest-amd64
     use: buildx
     goos: linux
     goarch: amd64
@@ -39,8 +39,8 @@ dockers:
       - --label=org.opencontainers.image.version={{.Version}}
       - --label=org.opencontainers.image.source={{.GitURL}}
   - image_templates:
-      - ghcr.io/liatrio/gh-attest-util:{{ .Version }}-arm64
-      - ghcr.io/liatrio/gh-attest-util:latest-arm64
+      - ghcr.io/liatrio/autogov-helper:{{ .Version }}-arm64
+      - ghcr.io/liatrio/autogov-helper:latest-arm64
     use: buildx
     goos: linux
     goarch: arm64
@@ -55,14 +55,14 @@ dockers:
       - --label=org.opencontainers.image.source={{.GitURL}}
 
 docker_manifests:
-  - name_template: ghcr.io/liatrio/gh-attest-util:{{ .Version }}
+  - name_template: ghcr.io/liatrio/autogov-helper:{{ .Version }}
     image_templates:
-      - ghcr.io/liatrio/gh-attest-util:{{ .Version }}-amd64
-      - ghcr.io/liatrio/gh-attest-util:{{ .Version }}-arm64
-  - name_template: ghcr.io/liatrio/gh-attest-util:latest
+      - ghcr.io/liatrio/autogov-helper:{{ .Version }}-amd64
+      - ghcr.io/liatrio/autogov-helper:{{ .Version }}-arm64
+  - name_template: ghcr.io/liatrio/autogov-helper:latest
     image_templates:
-      - ghcr.io/liatrio/gh-attest-util:latest-amd64
-      - ghcr.io/liatrio/gh-attest-util:latest-arm64
+      - ghcr.io/liatrio/autogov-helper:latest-amd64
+      - ghcr.io/liatrio/autogov-helper:latest-arm64
 
 archives:
   - format: tar.gz

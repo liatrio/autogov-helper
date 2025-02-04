@@ -1,6 +1,6 @@
 .PHONY: build test clean lint format all install verify help
 
-BINARY_NAME := gh-attest-util
+BINARY_NAME := autogov-helper
 BINARY_DIR := bin
 VERSION ?= $(shell git describe --tags --always --dirty)
 LDFLAGS := -X main.version=$(VERSION)

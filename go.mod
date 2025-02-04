@@ -1,4 +1,4 @@
-module gh-attest-util
+module autogov-helper
 
 go 1.23.4
 

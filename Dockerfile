@@ -5,17 +5,17 @@ COPY . .
 RUN go mod download
 
 ARG TARGETOS TARGETARCH
-RUN CGO_ENABLED=0 GOOS=$TARGETOS GOARCH=$TARGETARCH go build -ldflags "-X main.version=${VERSION:-dev}" -o gh-attest-util .
+RUN CGO_ENABLED=0 GOOS=$TARGETOS GOARCH=$TARGETARCH go build -ldflags "-X main.version=${VERSION:-dev}" -o autogov-helper .
 
 FROM alpine:3.19
-LABEL org.opencontainers.image.title="gh-attest-util" \
+LABEL org.opencontainers.image.title="autogov-helper" \
       org.opencontainers.image.description="GitHub Attestation Utility" \
       org.opencontainers.image.vendor="YourOrg" \
       org.opencontainers.image.licenses="MIT" \
-      org.opencontainers.image.source="https://github.com/laitrio/gh-attest-util"
+      org.opencontainers.image.source="https://github.com/laitrio/autogov-helper"
 
 RUN apk add --no-cache ca-certificates
 
-COPY --from=builder /app/gh-attest-util /usr/local/bin/
+COPY --from=builder /app/autogov-helper /usr/local/bin/
 
-ENTRYPOINT ["/usr/local/bin/gh-attest-util"]
+ENTRYPOINT ["/usr/local/bin/autogov-helper"]
