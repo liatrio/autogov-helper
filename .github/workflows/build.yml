@@ -77,16 +77,16 @@ jobs:
             VERSION="${VERSION}-${GITHUB_SHA::8}"
           fi
           echo "VERSION=${VERSION}" >> $GITHUB_ENV
-          go build -ldflags "-X main.version=${VERSION}" -o bin/gh-attest-util .
+          go build -ldflags "-X main.version=${VERSION}" -o bin/autogov-helper .
       - name: Install Binary
         run: |
-          sudo cp bin/gh-attest-util /usr/local/bin/
-          gh-attest-util --help
+          sudo cp bin/autogov-helper /usr/local/bin/
+          autogov-helper --help
       - name: Upload binary
         uses: actions/upload-artifact@65c4c4a1ddee5b72f698fdd19549f0f0fb45cf08 # v4.6.0
         with:
-          name: gh-attest-util
-          path: bin/gh-attest-util
+          name: autogov-helper
+          path: bin/autogov-helper
 
   test-attestations:
     name: test-attestations
@@ -101,13 +101,13 @@ jobs:
       - name: Download binary
         uses: actions/download-artifact@c850b930e6ba138125429b7e5c93fc707a7f8427 # v4.1.4
         with:
-          name: gh-attest-util
+          name: autogov-helper
           path: bin
       - name: Install Binary
         run: |
-          chmod +x bin/gh-attest-util
-          sudo cp bin/gh-attest-util /usr/local/bin/
-          gh-attest-util --help
+          chmod +x bin/autogov-helper
+          sudo cp bin/autogov-helper /usr/local/bin/
+          autogov-helper --help
       - name: Create test file
         run: echo "test content" > test-file.txt
       - name: Generate blob metadata
@@ -115,7 +115,7 @@ jobs:
           GH_TOKEN: ${{ secrets.UTIL_REPO_ACCESS }}
           GITHUB_TOKEN: ${{ secrets.UTIL_REPO_ACCESS }}
         run: |
-          gh-attest-util metadata \
+          autogov-helper metadata \
             --type blob \
             --subject-path test-file.txt \
             --output blob-metadata.json
@@ -129,7 +129,7 @@ jobs:
           GH_TOKEN: ${{ secrets.UTIL_REPO_ACCESS }}
           GITHUB_TOKEN: ${{ secrets.UTIL_REPO_ACCESS }}
         run: |
-          gh-attest-util metadata \
+          autogov-helper metadata \
             --type image \
             --subject-name ghcr.io/test-org/test-repo \
             --subject-digest sha256:test \
@@ -182,7 +182,7 @@ jobs:
           GH_TOKEN: ${{ secrets.UTIL_REPO_ACCESS }}
           GITHUB_TOKEN: ${{ secrets.UTIL_REPO_ACCESS }}
         run: |
-          gh-attest-util depscan \
+          autogov-helper depscan \
             --results-path results.json \
             --subject-name test-image:latest \
             --digest sha256:test \

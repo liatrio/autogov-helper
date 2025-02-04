@@ -12,7 +12,7 @@ import (
 	"strings"
 	"time"
 
-	"gh-attest-util/internal/config"
+	"autogov-helper/internal/config"
 
 	"github.com/google/go-github/v68/github"
 	"github.com/xeipuuv/gojsonschema"

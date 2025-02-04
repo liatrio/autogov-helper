@@ -1,4 +1,4 @@
-# gh-attest-util
+# autogov-helper
 
 A GitHub Actions utility for generating standardized artifact attestations.
 
@@ -7,7 +7,7 @@ A GitHub Actions utility for generating standardized artifact attestations.
 ### Metadata Attestation
 
 ```yaml
-- uses: liatrio/gh-attest-util@main
+- uses: liatrio/autogov-helper@main
   with:
     type: metadata
     artifact-digest: ${{ needs.build.outputs.image-digest }}
@@ -30,7 +30,7 @@ Generates a standardized metadata attestation including:
 ### Dependency Scan Attestation
 
 ```yaml
-- uses: liatrio/gh-attest-util@main
+- uses: liatrio/autogov-helper@main
   with:
     type: depscan
     results-file: results.json
@@ -110,13 +110,13 @@ The utility is also available as a multi-architecture container image:
 
 ```bash
 # Pull the latest version
-docker pull ghcr.io/laitrio/gh-attest-util:latest
+docker pull ghcr.io/laitrio/autogov-helper:latest
 
 # Pull a specific version
-docker pull ghcr.io/laitrio/gh-attest-util:v1.0.0
+docker pull ghcr.io/laitrio/autogov-helper:v1.0.0
 
 # Run the container
-docker run --rm ghcr.io/laitrio/gh-attest-util:latest --help
+docker run --rm ghcr.io/laitrio/autogov-helper:latest --help
 ```
 
 Container images are automatically built and pushed to GitHub Container Registry (GHCR) on each release.
