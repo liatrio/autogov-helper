@@ -44,6 +44,7 @@ type MetadataTemplateData struct {
 	Registry          string
 	Repository        string
 	SubjectName       string
+	FullName          string
 	Path              string
 	RepositoryID      string
 	GitHubServerURL   string

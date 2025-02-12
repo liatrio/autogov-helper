@@ -1,17 +1,12 @@
 {
   "artifact": {
-    "version": "{{ .Version }}",
-    {{- if .Digest }}
-    "digest": "{{ .Digest }}",
-    {{- end }}
+    "version": "{{ .Version }}"{{- if .Digest }},
+    "digest": "{{ .Digest }}"{{- end }},
     "created": "{{ .Created }}",
-    "type": "{{ .Type }}",
-    {{- if eq .Type "container-image" }}
+    "type": "{{ .Type }}"{{- if eq .Type "container-image" }},
     "registry": "{{ .Registry }}",
-    "fullName": "{{ if eq .Registry "local" }}{{ .SubjectName }}{{ else }}{{ .Registry }}/{{ .Repository }}@{{ .Digest }}{{ end }}"
-    {{- else if eq .Type "blob" }}
-    "path": "{{ .Path }}"
-    {{- end }}
+    "fullName": "{{ .FullName }}"{{- else if eq .Type "blob" }},
+    "path": "{{ .Path }}"{{- end }}
   },
   "repositoryData": {
     "repository": "{{ .Repository }}",
@@ -50,33 +45,15 @@
   },
   "compliance": {
     "policyRef": "{{ .PolicyRef }}",
-    "controlIds": [
-      {{- if .ControlIds }}
-      {{- range $i, $id := .ControlIds }}
-      {{- if $i }},{{ end }}
-      "{{ $id }}"
-      {{- end }}
-      {{- else }}
-      "{{ .Owner }}-PROVENANCE-001",
-      "{{ .Owner }}-SBOM-002",
-      "{{ .Owner }}-METADATA-003"
-      {{- end }}
-    ]
+    "controlIds": [{{ if .ControlIds }}{{ range $i, $id := .ControlIds }}{{ if $i }},{{ end }}"{{ $id }}"{{ end }}{{ else }}"{{ .Owner }}-PROVENANCE-001","{{ .Owner }}-SBOM-002","{{ .Owner }}-METADATA-003"{{ end }}]
   },
   "security": {
     "permissions": {
       "id-token": "write",
       "attestations": "write",
-      {{- if eq .Type "container-image" }}
-      {{- if eq .Registry "local" }}
-      "packages": "read",
-      {{- else }}
-      "packages": "write",
-      {{- end }}
-      {{- else }}
-      "packages": "read",
-      {{- end }}
-      "contents": "read"
+      "contents": "read"{{- if eq .Type "container-image" }},
+      "packages": "write"{{- else }},
+      "packages": "none"{{- end }}
     }
   }
 } 
