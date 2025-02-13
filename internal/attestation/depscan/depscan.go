@@ -62,8 +62,8 @@ func NewFromGrypeResults(opts Options) (*DependencyScan, error) {
 				} `json:"db"`
 			} `json:"configuration"`
 			DB struct {
-				Built         string `json:"built"`
-				SchemaVersion string `json:"schemaVersion"`
+				Built         string      `json:"built"`
+				SchemaVersion json.Number `json:"schemaVersion"`
 			} `json:"db"`
 		} `json:"descriptor"`
 		Matches []struct {
@@ -91,7 +91,7 @@ func NewFromGrypeResults(opts Options) (*DependencyScan, error) {
 
 	// set db info
 	scan.Scanner.DB.URI = grypeResults.Descriptor.Configuration.DB.UpdateURL
-	scan.Scanner.DB.Version = grypeResults.Descriptor.DB.SchemaVersion
+	scan.Scanner.DB.Version = grypeResults.Descriptor.DB.SchemaVersion.String()
 	scan.Scanner.DB.LastUpdate = grypeResults.Descriptor.DB.Built
 
 	// set scan metadata

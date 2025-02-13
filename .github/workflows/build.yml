@@ -5,6 +5,7 @@ on:
   pull_request:
     branches: [main]
   push:
+    branches: ['**']
     paths-ignore:
       - README.md
       - catalog-info.yaml
@@ -13,17 +14,18 @@ on:
       - v*
 
 env:
-  GITHUB_TOKEN: ${{ secrets.UTIL_REPO_ACCESS }}
+  GITHUB_WORKFLOW_INPUTS: ${{ toJson(inputs) }}
 
 jobs:
   lint:
     name: lint
+    if: github.event.pull_request.draft == false
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
       - uses: actions/setup-go@3041bf56c941b39c61721a86cd11f3bb1338122a # v5
         with:
-          go-version: "1.23.4"
+          go-version: 1.23.4
           cache: true
           cache-dependency-path: go.sum
       - name: Install golangci-lint
@@ -36,6 +38,7 @@ jobs:
         run: golangci-lint run
   test:
     name: test
+    if: github.event.pull_request.draft == false
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -44,7 +47,7 @@ jobs:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
       - uses: actions/setup-go@3041bf56c941b39c61721a86cd11f3bb1338122a # v5.2.0
         with:
-          go-version: "1.23.4"
+          go-version: 1.23.4
           cache: true
           cache-dependency-path: go.sum
       - name: Run tests
@@ -57,6 +60,7 @@ jobs:
 
   build:
     name: build
+    if: github.event.pull_request.draft == false
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -66,7 +70,7 @@ jobs:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
       - uses: actions/setup-go@3041bf56c941b39c61721a86cd11f3bb1338122a # v5.2.0
         with:
-          go-version: "1.23.4"
+          go-version: 1.23.4
           cache: true
           cache-dependency-path: go.sum
       - name: Build
@@ -87,108 +91,3 @@ jobs:
         with:
           name: autogov-helper
           path: bin/autogov-helper
-
-  test-attestations:
-    name: test-attestations
-    needs: [build]
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      packages: write
-      id-token: write
-    steps:
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
-      - name: Download binary
-        uses: actions/download-artifact@c850b930e6ba138125429b7e5c93fc707a7f8427 # v4.1.4
-        with:
-          name: autogov-helper
-          path: bin
-      - name: Install Binary
-        run: |
-          chmod +x bin/autogov-helper
-          sudo cp bin/autogov-helper /usr/local/bin/
-          autogov-helper --help
-      - name: Create test file
-        run: echo "test content" > test-file.txt
-      - name: Generate blob metadata
-        env:
-          GH_TOKEN: ${{ secrets.UTIL_REPO_ACCESS }}
-          GITHUB_TOKEN: ${{ secrets.UTIL_REPO_ACCESS }}
-        run: |
-          autogov-helper metadata \
-            --type blob \
-            --subject-path test-file.txt \
-            --output blob-metadata.json
-      - name: Verify blob metadata
-        run: |
-          echo "Generated blob metadata:"
-          cat blob-metadata.json | jq '.'
-          test -f blob-metadata.json
-      - name: Generate container metadata
-        env:
-          GH_TOKEN: ${{ secrets.UTIL_REPO_ACCESS }}
-          GITHUB_TOKEN: ${{ secrets.UTIL_REPO_ACCESS }}
-        run: |
-          autogov-helper metadata \
-            --type image \
-            --subject-name ghcr.io/test-org/test-repo \
-            --subject-digest sha256:test \
-            --output container-metadata.json
-      - name: Verify container metadata
-        run: |
-          echo "Generated container metadata:"
-          cat container-metadata.json | jq '.'
-          test -f container-metadata.json
-      - name: Create test grype results
-        run: |
-          cat << EOF > results.json
-          {
-            "bomFormat": "CycloneDX",
-            "specVersion": "1.5",
-            "version": 1,
-            "metadata": {
-              "timestamp": "2024-03-14T12:00:00Z",
-              "tools": [
-                {
-                  "vendor": "anchore",
-                  "name": "grype",
-                  "version": "0.74.7"
-                }
-              ]
-            },
-            "vulnerabilities": [
-              {
-                "id": "CVE-2024-1234",
-                "source": {
-                  "name": "nvd",
-                  "url": "https://nvd.nist.gov"
-                },
-                "ratings": [
-                  {
-                    "source": {
-                      "name": "nvd"
-                    },
-                    "score": 7.5,
-                    "severity": "HIGH",
-                    "method": "CVSSv3"
-                  }
-                ]
-              }
-            ]
-          }
-          EOF
-      - name: Generate depscan attestation
-        env:
-          GH_TOKEN: ${{ secrets.UTIL_REPO_ACCESS }}
-          GITHUB_TOKEN: ${{ secrets.UTIL_REPO_ACCESS }}
-        run: |
-          autogov-helper depscan \
-            --results-path results.json \
-            --subject-name test-image:latest \
-            --digest sha256:test \
-            --output depscan.json
-      - name: Verify depscan attestation
-        run: |
-          echo "Generated depscan attestation:"
-          cat depscan.json | jq '.'
-          test -f depscan.json

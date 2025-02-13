@@ -10,9 +10,9 @@ RUN CGO_ENABLED=0 GOOS=$TARGETOS GOARCH=$TARGETARCH go build -ldflags "-X main.v
 FROM alpine:3.19
 LABEL org.opencontainers.image.title="autogov-helper" \
       org.opencontainers.image.description="GitHub Attestation Utility" \
-      org.opencontainers.image.vendor="YourOrg" \
-      org.opencontainers.image.licenses="MIT" \
-      org.opencontainers.image.source="https://github.com/laitrio/autogov-helper"
+      org.opencontainers.image.vendor="Liatrio" \
+      org.opencontainers.image.licenses="Apache-2.0" \
+      org.opencontainers.image.source="https://github.com/liatrio/autogov-helper"
 
 RUN apk add --no-cache ca-certificates
 

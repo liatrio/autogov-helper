@@ -20,8 +20,8 @@ func Load() (*Config, error) {
 	cfg := &Config{
 		PolicyRepo: PolicyRepo{
 			Owner: getEnvOrDefault("POLICY_REPO_OWNER", "liatrio"),
-			Name:  getEnvOrDefault("POLICY_REPO_NAME", "demo-gh-autogov-policy-library"),
-			Ref:   getEnvOrDefault("POLICY_VERSION", "v0.8.0"),
+			Name:  getEnvOrDefault("POLICY_REPO_NAME", ""),
+			Ref:   getEnvOrDefault("POLICY_VERSION", ""),
 		},
 		SchemasPath: getEnvOrDefault("SCHEMAS_PATH", "schemas/"),
 	}

@@ -42,7 +42,7 @@ type Metadata struct {
 	} `json:"runnerData"`
 	WorkflowData struct {
 		WorkflowRefPath string         `json:"workflowRefPath"`
-		Inputs          map[string]any `json:"inputs"`
+		Inputs          map[string]any `json:"inputs,omitempty"`
 		Branch          string         `json:"branch"`
 		Event           string         `json:"event"`
 	} `json:"workflowData"`
@@ -119,7 +119,7 @@ type Options struct {
 	PolicyRef  string
 	ControlIds []string
 
-	// perissions fields
+	// permissions fields
 	Permissions map[string]string
 }
 
@@ -165,7 +165,6 @@ func NewFromOptions(opts Options) (*Metadata, error) {
 
 	// set wf data
 	m.WorkflowData.WorkflowRefPath = opts.WorkflowRefPath
-	m.WorkflowData.Inputs = opts.Inputs
 	m.WorkflowData.Branch = opts.Branch
 	m.WorkflowData.Event = opts.Event
 
@@ -190,6 +189,13 @@ func NewFromOptions(opts Options) (*Metadata, error) {
 
 	// set permissions data
 	m.Security.Permissions = opts.Permissions
+
+	// set workflow inputs if they exist
+	if opts.Inputs != nil {
+		m.WorkflowData.Inputs = opts.Inputs
+	} else {
+		m.WorkflowData.Inputs = make(map[string]any)
+	}
 
 	return m, nil
 }

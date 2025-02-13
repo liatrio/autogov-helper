@@ -6,17 +6,40 @@ A GitHub Actions utility for generating standardized artifact attestations.
 
 ### Metadata Attestation
 
+For container images:
+
 ```yaml
-- uses: liatrio/autogov-helper@main
-  with:
-    type: metadata
-    artifact-digest: ${{ needs.build.outputs.image-digest }}
-    registry: ghcr.io
+- name: Generate Metadata Attestation
+  env:
+    GITHUB_WORKFLOW_INPUTS: ${{ toJson(inputs) }}
+  run: |
+    ./autogov-helper-cli metadata \
+      --type image \
+      --subject-name ghcr.io/myorg/myapp:latest \
+      --subject-digest sha256:abc123def456 \
+      --output metadata.json
+```
+
+For blobs (single file or directory):
+
+```yaml
+- name: Generate Metadata Attestation
+  env:
+    GITHUB_WORKFLOW_INPUTS: ${{ toJson(inputs) }}
+  run: |
+    ./autogov-helper-cli metadata \
+      --type blob \
+      --subject-path ${{ env.ARTIFACTS_FOLDER }}/* \
+      --output metadata.json
 ```
 
 Generates a standardized metadata attestation including:
 
-- Artifact details (version, digest, registry info)
+- Artifact details
+  - Version, created timestamp
+  - Type (container-image or blob)
+  - For images: registry, fullName, digest
+  - For blobs: path(s) of files
 - Repository data (name, ID, GitHub server URL)
 - Owner data (name, ID)
 - Runner data (OS, architecture, environment)
@@ -29,47 +52,56 @@ Generates a standardized metadata attestation including:
 
 ### Dependency Scan Attestation
 
+For container images:
+
 ```yaml
-- uses: liatrio/autogov-helper@main
-  with:
-    type: depscan
-    results-file: results.json
+- name: Generate Dependency Scan Attestation
+  run: |
+    ./autogov-helper-cli depscan \
+      --type image \
+      --subject-name ghcr.io/myorg/myapp:latest \
+      --subject-digest sha256:abc123def456 \
+      --results-path results.json \
+      --output depscan.json
+```
+
+For blobs (single file or directory):
+
+```yaml
+- name: Generate Dependency Scan Attestation
+  run: |
+    ./autogov-helper-cli depscan \
+      --type blob \
+      --subject-path ${{ env.ARTIFACTS_FOLDER }}/* \
+      --results-path results.json \
+      --output depscan.json
 ```
 
 Transforms Grype scan results into a standardized format containing:
 
-- Scanner metadata
-- Database information
+- Scanner metadata (version, URI)
+- Database information (version, last update)
 - Vulnerability findings with severity scores
 - Scan timestamps
+- Standardized severity structure
+  - Multiple scoring methods (NVD, CVSS)
+  - Normalized severity levels
 
-## Predicate Structure
+## Blob Handling
 
-The `predicates` directory contains JSON examples of the attestation formats:
+When working with blobs, both commands support:
 
-### metadata.json
+- Single files
+- Directories (all files in the directory will be included)
+- Multiple files (paths are joined with newlines in the output)
+- Glob patterns (e.g., `*.jar` or `**/*.go`)
 
-Represents the metadata attestation structure for GitHub Actions workflows, including:
+For directories, the commands will:
 
-- Basic artifact information (version, type, etc.)
-- GitHub repository details
-- Workflow and job information
-- Runner environment details
-- Commit information
-
-### depscan.json
-
-Represents the dependency scan attestation structure for vulnerability scanning, including:
-
-- Scanner information
-- Database details
-- Vulnerability results
-
-These JSON files serve as:
-
-1. Documentation of the predicate structure
-2. Examples for validation
-3. References for future updates
+1. Recursively find all files
+2. Sort them for consistent ordering
+3. Join paths with newlines in the output
+4. Calculate a combined digest (for depscan)
 
 ## Development
 
@@ -77,7 +109,6 @@ Requirements:
 
 - GitHub token with repo access (can be obtained via `gh auth token`)
 - Set `GITHUB_TOKEN` environment variable or have `gh` CLI authenticated
-- Set `POLICY_VERSION` environment variable to use a specific version (defaults to v0.8.0)
 
 ### Building and Testing
 
@@ -110,13 +141,13 @@ The utility is also available as a multi-architecture container image:
 
 ```bash
 # Pull the latest version
-docker pull ghcr.io/laitrio/autogov-helper:latest
+docker pull ghcr.io/liatrio/autogov-helper:latest
 
 # Pull a specific version
-docker pull ghcr.io/laitrio/autogov-helper:v1.0.0
+docker pull ghcr.io/liatrio/autogov-helper:v1.0.0
 
 # Run the container
-docker run --rm ghcr.io/laitrio/autogov-helper:latest --help
+docker run --rm ghcr.io/liatrio/autogov-helper:latest --help
 ```
 
 Container images are automatically built and pushed to GitHub Container Registry (GHCR) on each release.

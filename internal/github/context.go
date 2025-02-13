@@ -67,6 +67,11 @@ type Context struct {
 
 	// runner data
 	Runner *Runner `json:"runner"`
+
+	// organization data
+	Organization struct {
+		Name string `json:"name"`
+	} `json:"organization"`
 }
 
 type Runner struct {
@@ -94,6 +99,10 @@ func LoadFromEnv() (*Context, error) {
 		Inputs:            make(map[string]any),
 	}
 
+	if ctx.JobStatus == "" {
+		ctx.JobStatus = ""
+	}
+
 	// get event data from GITHUB_EVENT_PATH
 	if eventData, err := os.ReadFile(os.Getenv(envEventPath)); err == nil {
 		var event struct {
@@ -113,8 +122,13 @@ func LoadFromEnv() (*Context, error) {
 	// get workflow inputs from GITHUB_WORKFLOW_INPUTS
 	// note: GITHUB_WORKFLOW_INPUTS is used exclusively as it provides a reliable JSON structure of all workflow inputs, rather than individual INPUT_* env vars
 	if workflowInputs := os.Getenv(envWorkflowInputs); workflowInputs != "" {
-		if err := json.Unmarshal([]byte(workflowInputs), &ctx.Inputs); err != nil {
+		var inputs map[string]any
+		if err := json.Unmarshal([]byte(workflowInputs), &inputs); err != nil {
 			return nil, fmt.Errorf("failed to parse workflow inputs: %w", err)
+		}
+		// set if inputs exists
+		if len(inputs) > 0 {
+			ctx.Inputs = inputs
 		}
 	}
 
@@ -132,6 +146,10 @@ func LoadFromEnv() (*Context, error) {
 		OS:          osName,
 		Arch:        arch,
 		Environment: os.Getenv(envRunnerEnv),
+	}
+
+	if ctx.RepositoryOwner != "" {
+		ctx.Organization.Name = ctx.RepositoryOwner
 	}
 
 	return ctx, nil

@@ -7,8 +7,6 @@ LDFLAGS := -X main.version=$(VERSION)
 
 GH_TOKEN ?= $(shell gh auth token)
 export GH_TOKEN
-POLICY_VERSION ?= v0.8.0
-export POLICY_VERSION
 
 all: verify build
 
