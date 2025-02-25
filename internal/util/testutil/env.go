@@ -5,7 +5,7 @@ import (
 	"testing"
 )
 
-// SetupTestEnv sets up a test environment with common env vars and returns a cleanup function
+// setup test env with common vars
 func SetupTestEnv(t *testing.T) func() {
 	// save original values
 	originalEnvVars := map[string]string{

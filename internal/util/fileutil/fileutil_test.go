@@ -10,27 +10,31 @@ import (
 )
 
 func TestCalculateDigest(t *testing.T) {
-	// Create a temporary directory for test files
-	tmpDir, err := os.MkdirTemp("", "fileutil_test")
+	// create temp test dir
+	tempDir, err := os.MkdirTemp("", "test")
 	require.NoError(t, err)
-	defer os.RemoveAll(tmpDir)
+	defer os.RemoveAll(tempDir)
 
-	// Create test files
-	testFile1 := filepath.Join(tmpDir, "test1.txt")
-	require.NoError(t, os.WriteFile(testFile1, []byte("test content 1"), 0600))
+	// create test files
+	testFiles := map[string]string{
+		"file1.txt": "test content 1",
+		"file2.txt": "test content 2",
+	}
 
-	testFile2 := filepath.Join(tmpDir, "test2.txt")
-	require.NoError(t, os.WriteFile(testFile2, []byte("test content 2"), 0600))
+	for fileName, content := range testFiles {
+		testFilePath := filepath.Join(tempDir, fileName)
+		require.NoError(t, os.WriteFile(testFilePath, []byte(content), 0600))
+	}
 
 	t.Run("single file", func(t *testing.T) {
-		digest, err := CalculateDigest(testFile1)
+		digest, err := CalculateDigest(filepath.Join(tempDir, "file1.txt"))
 		require.NoError(t, err)
 		assert.NotEmpty(t, digest)
 		assert.Contains(t, digest, "sha256:")
 	})
 
 	t.Run("directory", func(t *testing.T) {
-		digest, err := CalculateDigest(tmpDir)
+		digest, err := CalculateDigest(tempDir)
 		require.NoError(t, err)
 		assert.NotEmpty(t, digest)
 		assert.Contains(t, digest, "sha256:")
@@ -38,6 +42,37 @@ func TestCalculateDigest(t *testing.T) {
 
 	t.Run("non-existent file", func(t *testing.T) {
 		_, err := CalculateDigest("non-existent-file")
+		assert.Error(t, err)
+	})
+}
+
+func TestCalculateDigestForDirectory(t *testing.T) {
+	// create temp test dir
+	tempDir, err := os.MkdirTemp("", "test")
+	require.NoError(t, err)
+	defer os.RemoveAll(tempDir)
+
+	// create test files and dirs
+	testFiles := map[string]string{
+		"file1.txt":          "test content 1",
+		"dir1/file2.txt":     "test content 2",
+		"dir1/dir2/file.txt": "test content 3",
+	}
+
+	for fileName, content := range testFiles {
+		filePath := filepath.Join(tempDir, fileName)
+		require.NoError(t, os.MkdirAll(filepath.Dir(filePath), 0700))
+		require.NoError(t, os.WriteFile(filePath, []byte(content), 0600))
+	}
+
+	t.Run("list all files", func(t *testing.T) {
+		foundFiles, err := listFiles(tempDir)
+		require.NoError(t, err)
+		assert.Len(t, foundFiles, len(testFiles))
+	})
+
+	t.Run("non-existent directory", func(t *testing.T) {
+		_, err := listFiles("non-existent-dir")
 		assert.Error(t, err)
 	})
 }

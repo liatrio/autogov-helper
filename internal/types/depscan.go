@@ -77,7 +77,7 @@ type DependencyScanOptions struct {
 	FinishedAt  time.Time
 }
 
-// GrypeResult represents the structure of Grype scan results
+// grype scan results
 type GrypeResult struct {
 	Descriptor struct {
 		Version       string `json:"version"`

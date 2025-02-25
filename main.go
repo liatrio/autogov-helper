@@ -45,7 +45,7 @@ func newMetadataCommand() *cobra.Command {
 		Use:   "metadata",
 		Short: "Generate metadata attestation",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			// Set artifact type
+			// set artifact type
 			switch artifactType {
 			case "image":
 				opts.Type = types.ArtifactTypeContainerImage
@@ -55,13 +55,13 @@ func newMetadataCommand() *cobra.Command {
 				return fmt.Errorf("invalid type %q, must be 'image' or 'blob'", artifactType)
 			}
 
-			// Load GitHub context
+			// load github context
 			ctx, err := attestation.LoadGitHubContext()
 			if err != nil {
 				return fmt.Errorf("failed to load GitHub context: %w", err)
 			}
 
-			// Set GitHub context fields
+			// set github context fields
 			opts.Repository = ctx.Repository
 			opts.RepositoryID = ctx.RepositoryID
 			opts.GitHubServerURL = ctx.ServerURL
@@ -81,38 +81,38 @@ func newMetadataCommand() *cobra.Command {
 			opts.OrgName = ctx.Organization.Name
 			opts.Inputs = ctx.Inputs
 
-			// Set timestamps from event data
+			// parse workflow run creation time
 			if ctx.Event.WorkflowRun.CreatedAt != "" {
 				startTime, err := time.Parse(time.RFC3339, ctx.Event.WorkflowRun.CreatedAt)
 				if err == nil {
 					opts.StartedAt = startTime.UTC()
 				} else {
-					// If we can't parse the workflow run creation time, use current time
+					// use current time if parse fails
 					opts.StartedAt = time.Now().UTC()
 				}
 			} else {
-				// If no workflow run creation time is available, use current time
+				// use current time if no creation time
 				opts.StartedAt = time.Now().UTC()
 			}
 
-			// Set completed time to now
+			// set completed time
 			opts.CompletedAt = time.Now().UTC()
 
-			// Set commit timestamp if available
+			// parse commit timestamp
 			if ctx.Event.HeadCommit.Timestamp != "" {
 				commitTime, err := time.Parse(time.RFC3339, ctx.Event.HeadCommit.Timestamp)
 				if err == nil {
 					opts.Timestamp = commitTime.UTC()
 				} else {
-					// If we can't parse the commit timestamp, use current time
+					// use current time if parse fails
 					opts.Timestamp = time.Now().UTC()
 				}
 			} else {
-				// If no commit timestamp is available, use current time
+				// use current time if no timestamp
 				opts.Timestamp = time.Now().UTC()
 			}
 
-			// Set version based on SHA and run number
+			// set version from sha and run number
 			if opts.SHA != "" && opts.RunNumber != "" {
 				shortSHA := opts.SHA
 				if len(shortSHA) > 7 {
@@ -121,12 +121,12 @@ func newMetadataCommand() *cobra.Command {
 				opts.Version = fmt.Sprintf("%s-%s", shortSHA, opts.RunNumber)
 			}
 
-			// Set created time to now if not set
+			// set created time
 			if opts.Created.IsZero() {
 				opts.Created = time.Now().UTC()
 			}
 
-			// Set policy reference and control IDs
+			// set policy and control ids
 			opts.PolicyRef = "https://github.com/liatrio/demo-gh-autogov-policy-library"
 			if opts.Owner != "" {
 				opts.ControlIds = []string{
@@ -136,7 +136,7 @@ func newMetadataCommand() *cobra.Command {
 				}
 			}
 
-			// Set permissions based on type
+			// set permissions
 			opts.Permissions = map[string]string{
 				"id-token":     "write",
 				"attestations": "write",
@@ -144,7 +144,7 @@ func newMetadataCommand() *cobra.Command {
 			}
 			if opts.Type == types.ArtifactTypeContainerImage {
 				opts.Permissions["packages"] = "write"
-				// Append digest to fullName if not already present
+				// add sha256 to fullname if missing
 				if !strings.Contains(opts.FullName, "@sha256:") {
 					opts.FullName = fmt.Sprintf("%s@%s", opts.FullName, opts.Digest)
 				}
@@ -152,7 +152,6 @@ func newMetadataCommand() *cobra.Command {
 				opts.Permissions["packages"] = "none"
 			}
 
-			// Validate required fields
 			switch opts.Type {
 			case types.ArtifactTypeContainerImage:
 				if opts.FullName == "" {
@@ -161,7 +160,7 @@ func newMetadataCommand() *cobra.Command {
 				if opts.Digest == "" {
 					return fmt.Errorf("--subject-digest is required for image type")
 				}
-				// Parse registry from subject-name if it contains a hostname
+				// get registry from hostname in subject-name
 				if parts := strings.Split(opts.FullName, "/"); len(parts) > 2 && strings.Contains(parts[0], ".") {
 					opts.Registry = parts[0]
 				}
@@ -169,7 +168,7 @@ func newMetadataCommand() *cobra.Command {
 				if opts.SubjectPath == "" {
 					return fmt.Errorf("--subject-path is required for blob type")
 				}
-				// Calculate digest for blob if not provided
+				// calc digest for blob if not provided
 				if opts.Digest == "" {
 					digest, err := fileutil.CalculateDigest(opts.SubjectPath)
 					if err != nil {
@@ -202,6 +201,7 @@ func newDepscanCommand() *cobra.Command {
 		Use:   "depscan",
 		Short: "Generate dependency scan attestation",
 		RunE: func(cmd *cobra.Command, args []string) error {
+			// validate and set type
 			switch artifactType {
 			case "image":
 				opts.Type = types.ArtifactTypeContainerImage

@@ -6,7 +6,7 @@ import (
 	"time"
 )
 
-// ArtifactType represents the type of artifact being attested
+// artifact type
 type ArtifactType string
 
 const (
@@ -15,7 +15,7 @@ const (
 	MetadataPredicateTypeURI                = "https://cosign.sigstore.dev/attestation/v1"
 )
 
-// Metadata represents the common structure for attestation metadata
+// attestation metadata
 type Metadata struct {
 	Artifact struct {
 		Version  string `json:"version"`
@@ -70,7 +70,7 @@ type Metadata struct {
 	} `json:"security"`
 }
 
-// MetadataStatement represents the full in-toto statement structure
+// in-toto statement
 type MetadataStatement struct {
 	Type          string    `json:"_type"`
 	Subject       []Subject `json:"subject"`
@@ -78,7 +78,7 @@ type MetadataStatement struct {
 	Predicate     *Metadata `json:"predicate"`
 }
 
-// Options for creating a new Metadata instance
+// metadata creation options
 type Options struct {
 	// artifact fields
 	Version     string
@@ -132,7 +132,7 @@ type Options struct {
 	Permissions map[string]string
 }
 
-// NewFromOptions creates a new Metadata instance from Options
+// create new metadata from options
 func NewFromOptions(opts Options) *Metadata {
 	m := &Metadata{}
 
@@ -202,7 +202,7 @@ func NewFromOptions(opts Options) *Metadata {
 	return m
 }
 
-// ensureSHA256Prefix ensures the digest has a sha256: prefix
+// add sha256 prefix if missing
 func ensureSHA256Prefix(digest string) string {
 	if !strings.HasPrefix(digest, "sha256:") {
 		return "sha256:" + digest
@@ -210,11 +210,11 @@ func ensureSHA256Prefix(digest string) string {
 	return digest
 }
 
-// Generate generates the JSON representation of the metadata
+// generate json output
 func (m *Metadata) Generate() ([]byte, error) {
-	// Handle digest formatting for both artifact and subject
+	// format digest
 	m.Artifact.Digest = ensureSHA256Prefix(m.Artifact.Digest)
 
-	// Marshal just the metadata
+	// marshal to json
 	return json.MarshalIndent(m, "", "  ")
 }
