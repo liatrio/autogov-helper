@@ -1,0 +1,33 @@
+{
+  "_type": "https://in-toto.io/Statement/v1",
+  "subject": [{
+    "name": "{{ if eq .Type "container-image" }}{{ .SubjectName }}{{ else }}{{ .SubjectPath }}{{ end }}",
+    "digest": {
+      "sha256": "{{ .Digest }}"
+    }
+  }],
+  "predicateType": "https://in-toto.io/attestation/vulns/v0.2",
+  "predicate": {
+    "scanner": {
+      "name": "{{ .Scanner.Name }}",
+      "uri": "{{ .Scanner.URI }}",
+      "version": "{{ .Scanner.Version }}",
+      "db": {
+        "uri": "{{ .Scanner.DB.URI }}",
+        "version": "{{ .Scanner.DB.Version }}",
+        "lastUpdate": "{{ .Scanner.DB.LastUpdate }}"
+      },
+      "result": [{{ range $i, $r := .Scanner.Result }}{{ if $i }},{{ end }}{
+        "id": "{{ $r.ID }}",
+        "severity": [{{ range $j, $s := $r.Severity }}{{ if $j }},{{ end }}{
+          "method": "{{ $s.Method }}",
+          "score": "{{ $s.Score }}"
+        }{{ end }}]
+      }{{ end }}]
+    },
+    "metadata": {
+      "scanStartedOn": "{{ .Metadata.ScanStartedOn }}",
+      "scanFinishedOn": "{{ .Metadata.ScanFinishedOn }}"
+    }
+  }
+} 

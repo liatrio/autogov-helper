@@ -1,21 +1,21 @@
-package metadata
+package types
 
 import (
 	"encoding/json"
+	"strings"
 	"time"
 )
 
-const PredicateTypeURI = "https://cosign.sigstore.dev/attestation/v1"
-
-// represents the type of artifact being attested
+// ArtifactType represents the type of artifact being attested
 type ArtifactType string
 
 const (
 	ArtifactTypeBlob           ArtifactType = "blob"
 	ArtifactTypeContainerImage ArtifactType = "container-image"
+	MetadataPredicateTypeURI                = "https://cosign.sigstore.dev/attestation/v1"
 )
 
-// struct represents just the predicate portion of the attestation
+// Metadata represents the common structure for attestation metadata
 type Metadata struct {
 	Artifact struct {
 		Version  string `json:"version"`
@@ -70,6 +70,15 @@ type Metadata struct {
 	} `json:"security"`
 }
 
+// MetadataStatement represents the full in-toto statement structure
+type MetadataStatement struct {
+	Type          string    `json:"_type"`
+	Subject       []Subject `json:"subject"`
+	PredicateType string    `json:"predicateType"`
+	Predicate     *Metadata `json:"predicate"`
+}
+
+// Options for creating a new Metadata instance
 type Options struct {
 	// artifact fields
 	Version     string
@@ -123,15 +132,8 @@ type Options struct {
 	Permissions map[string]string
 }
 
-func (m *Metadata) Generate() ([]byte, error) {
-	data, err := json.MarshalIndent(m, "", "  ")
-	if err != nil {
-		return nil, err
-	}
-	return data, nil
-}
-
-func NewFromOptions(opts Options) (*Metadata, error) {
+// NewFromOptions creates a new Metadata instance from Options
+func NewFromOptions(opts Options) *Metadata {
 	m := &Metadata{}
 
 	// set artifact fields
@@ -197,5 +199,22 @@ func NewFromOptions(opts Options) (*Metadata, error) {
 		m.WorkflowData.Inputs = make(map[string]any)
 	}
 
-	return m, nil
+	return m
+}
+
+// ensureSHA256Prefix ensures the digest has a sha256: prefix
+func ensureSHA256Prefix(digest string) string {
+	if !strings.HasPrefix(digest, "sha256:") {
+		return "sha256:" + digest
+	}
+	return digest
+}
+
+// Generate generates the JSON representation of the metadata
+func (m *Metadata) Generate() ([]byte, error) {
+	// Handle digest formatting for both artifact and subject
+	m.Artifact.Digest = ensureSHA256Prefix(m.Artifact.Digest)
+
+	// Marshal just the metadata
+	return json.MarshalIndent(m, "", "  ")
 }
