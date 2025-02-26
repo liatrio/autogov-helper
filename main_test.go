@@ -134,7 +134,9 @@ func TestMetadataCommand(t *testing.T) {
 
 	compliance := predicate["compliance"].(map[string]interface{})
 	assert.Equal(t, "https://github.com/liatrio/demo-gh-autogov-policy-library", compliance["policyRef"])
-	assert.Contains(t, compliance["controlIds"], "liatrio-PROVENANCE-001")
+	assert.Contains(t, compliance["controlIds"], "test-org-PROVENANCE-001")
+	assert.Contains(t, compliance["controlIds"], "test-org-SBOM-002")
+	assert.Contains(t, compliance["controlIds"], "test-org-METADATA-003")
 
 	security := predicate["security"].(map[string]interface{})
 	permissions := security["permissions"].(map[string]interface{})
