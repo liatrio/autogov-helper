@@ -95,6 +95,9 @@ func NewDependencyScan(opts DependencyScanOptions) *DependencyScan {
 		Digest:      opts.Digest,
 	}
 
+	// initialize empty result array
+	scan.Scanner.Result = make([]ScanResult, 0)
+
 	// set metadata timestamps
 	scan.Metadata.ScanStartedOn = opts.StartedAt.Format("2006-01-02T15:04:05Z")
 	scan.Metadata.ScanFinishedOn = opts.FinishedAt.Format("2006-01-02T15:04:05Z")
