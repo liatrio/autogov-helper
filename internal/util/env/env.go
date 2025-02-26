@@ -62,14 +62,10 @@ func GetRequiredEnv(key string) (string, error) {
 
 // get github token from env
 func GetGitHubToken() (string, error) {
-	token := os.Getenv(EnvGHToken)
-	if token == "" {
-		token = os.Getenv(EnvGitHubToken)
+	for _, key := range []string{EnvGHToken, EnvGitHubToken} {
+		if token := os.Getenv(key); token != "" {
+			return token, nil
+		}
 	}
-
-	if token == "" {
-		return "", errors.NewError("get GitHub token from environment")
-	}
-
-	return token, nil
+	return "", errors.NewError("get GitHub token")
 }
