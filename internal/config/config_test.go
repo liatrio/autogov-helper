@@ -4,37 +4,27 @@ import (
 	"os"
 	"testing"
 
+	"autogov-helper/internal/util/testutil"
+
 	"github.com/stretchr/testify/assert"
 )
 
 func TestLoad(t *testing.T) {
-	originalEnv := map[string]string{
-		"POLICY_REPO_OWNER": os.Getenv("POLICY_REPO_OWNER"),
-		"POLICY_REPO_NAME":  os.Getenv("POLICY_REPO_NAME"),
-		"POLICY_VERSION":    os.Getenv("POLICY_VERSION"),
-		"SCHEMAS_PATH":      os.Getenv("SCHEMAS_PATH"),
-	}
-
-	defer func() {
-		for k, v := range originalEnv {
-			if v == "" {
-				os.Unsetenv(k)
-			} else {
-				os.Setenv(k, v)
-			}
-		}
-	}()
+	cleanup := testutil.SetupTestEnv(t)
+	defer cleanup()
 
 	t.Run("loads default config", func(t *testing.T) {
-		for k := range originalEnv {
-			os.Unsetenv(k)
-		}
+		// unset all env vars for this test
+		os.Unsetenv("POLICY_REPO_OWNER")
+		os.Unsetenv("POLICY_REPO_NAME")
+		os.Unsetenv("POLICY_VERSION")
+		os.Unsetenv("SCHEMAS_PATH")
 
 		cfg, err := Load()
 		assert.NoError(t, err)
 		assert.Equal(t, "liatrio", cfg.PolicyRepo.Owner)
-		assert.Equal(t, "", cfg.PolicyRepo.Name)
-		assert.Equal(t, "", cfg.PolicyRepo.Ref)
+		assert.Equal(t, "demo-gh-autogov-policy-library", cfg.PolicyRepo.Name)
+		assert.Equal(t, "main", cfg.PolicyRepo.Ref)
 		assert.Equal(t, "schemas/", cfg.SchemasPath)
 	})
 

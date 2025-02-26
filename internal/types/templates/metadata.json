@@ -1,0 +1,65 @@
+{
+  "_type": "https://in-toto.io/Statement/v1",
+  "subject": [{
+    "name": "{{ if eq .Artifact.Type "container-image" }}{{ .Artifact.FullName }}{{ else }}{{ .Artifact.Path }}{{ end }}",
+    "digest": {
+      "sha256": "{{ .Artifact.Digest }}"
+    }
+  }],
+  "predicateType": "https://cosign.sigstore.dev/attestation/v1",
+  "predicate": {
+    "artifact": {
+      "version": "{{ .Artifact.Version }}"{{- if eq .Artifact.Type "container-image" }},
+      "digest": "{{ .Artifact.Digest }}",
+      "created": "{{ .Artifact.Created }}",
+      "type": "container-image",
+      "registry": "{{ .Artifact.Registry }}",
+      "fullName": "{{ .Artifact.FullName }}"{{- else }},
+      "created": "{{ .Artifact.Created }}",
+      "type": "blob",
+      "path": "{{ .Artifact.Path }}"{{- end }}
+    },
+    "repositoryData": {
+      "repository": "{{ .RepositoryData.Repository }}",
+      "repositoryId": "{{ .RepositoryData.RepositoryID }}",
+      "githubServerURL": "{{ .RepositoryData.GitHubServerURL }}"
+    },
+    "ownerData": {
+      "owner": "{{ .OwnerData.Owner }}",
+      "ownerId": "{{ .OwnerData.OwnerID }}"
+    },
+    "runnerData": {
+      "os": "{{ .RunnerData.OS }}",
+      "arch": "{{ .RunnerData.Arch }}",
+      "environment": "{{ .RunnerData.Environment }}"
+    },
+    "workflowData": {
+      "workflowRefPath": "{{ .WorkflowData.WorkflowRefPath }}",
+      "inputs": {{ if .WorkflowData.Inputs }}{{ toJSON .WorkflowData.Inputs }}{{ else }}{}{{ end }},
+      "branch": "{{ .WorkflowData.Branch }}",
+      "event": "{{ .WorkflowData.Event }}"
+    },
+    "jobData": {
+      "runNumber": "{{ .JobData.RunNumber }}",
+      "runId": "{{ .JobData.RunID }}",
+      "status": "{{ .JobData.Status }}",
+      "triggeredBy": "{{ .JobData.TriggeredBy }}",
+      "startedAt": "{{ .JobData.StartedAt }}",
+      "completedAt": "{{ .JobData.CompletedAt }}"
+    },
+    "commitData": {
+      "sha": "{{ .CommitData.SHA }}",
+      "timestamp": "{{ .CommitData.Timestamp }}"
+    },
+    "organization": {
+      "name": "{{ .Organization.Name }}"
+    },
+    "compliance": {
+      "policyRef": "{{ .Compliance.PolicyRef }}",
+      "controlIds": [{{ if .Compliance.ControlIds }}{{ range $i, $id := .Compliance.ControlIds }}{{ if $i }},{{ end }}"{{ $id }}"{{ end }}{{ else }}"PROVENANCE-001","SBOM-002","METADATA-003"{{ end }}]
+    },
+    "security": {
+      "permissions": {{ toJSON .Security.Permissions }}
+    }
+  }
+} 

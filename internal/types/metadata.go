@@ -1,21 +1,21 @@
-package metadata
+package types
 
 import (
 	"encoding/json"
+	"strings"
 	"time"
 )
 
-const PredicateTypeURI = "https://cosign.sigstore.dev/attestation/v1"
-
-// represents the type of artifact being attested
+// artifact type
 type ArtifactType string
 
 const (
 	ArtifactTypeBlob           ArtifactType = "blob"
 	ArtifactTypeContainerImage ArtifactType = "container-image"
+	MetadataPredicateTypeURI                = "https://cosign.sigstore.dev/attestation/v1"
 )
 
-// struct represents just the predicate portion of the attestation
+// attestation metadata
 type Metadata struct {
 	Artifact struct {
 		Version  string `json:"version"`
@@ -70,6 +70,7 @@ type Metadata struct {
 	} `json:"security"`
 }
 
+// metadata creation options
 type Options struct {
 	// artifact fields
 	Version     string
@@ -123,15 +124,8 @@ type Options struct {
 	Permissions map[string]string
 }
 
-func (m *Metadata) Generate() ([]byte, error) {
-	data, err := json.MarshalIndent(m, "", "  ")
-	if err != nil {
-		return nil, err
-	}
-	return data, nil
-}
-
-func NewFromOptions(opts Options) (*Metadata, error) {
+// create new metadata from options
+func NewFromOptions(opts Options) *Metadata {
 	m := &Metadata{}
 
 	// set artifact fields
@@ -146,7 +140,6 @@ func NewFromOptions(opts Options) (*Metadata, error) {
 		m.Artifact.Digest = opts.Digest
 	case ArtifactTypeBlob:
 		m.Artifact.Path = opts.SubjectPath
-		m.Artifact.Digest = opts.Digest
 	}
 
 	// set repo data
@@ -197,5 +190,24 @@ func NewFromOptions(opts Options) (*Metadata, error) {
 		m.WorkflowData.Inputs = make(map[string]any)
 	}
 
-	return m, nil
+	return m
+}
+
+// add sha256 prefix if missing
+func ensureSHA256Prefix(digest string) string {
+	if !strings.HasPrefix(digest, "sha256:") {
+		return "sha256:" + digest
+	}
+	return digest
+}
+
+// generate json output
+func (m *Metadata) Generate() ([]byte, error) {
+	// format digest only for container images
+	if m.Artifact.Type == string(ArtifactTypeContainerImage) {
+		m.Artifact.Digest = ensureSHA256Prefix(m.Artifact.Digest)
+	}
+
+	// marshal to json
+	return json.MarshalIndent(m, "", "  ")
 }
