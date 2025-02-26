@@ -129,10 +129,11 @@ func newMetadataCommand() *cobra.Command {
 			// set policy and control ids
 			opts.PolicyRef = "https://github.com/liatrio/demo-gh-autogov-policy-library"
 			if opts.Owner != "" {
+				owner := opts.Owner
 				opts.ControlIds = []string{
-					"liatrio-PROVENANCE-001",
-					"liatrio-SBOM-002",
-					"liatrio-METADATA-003",
+					owner + "-PROVENANCE-001",
+					owner + "-SBOM-002",
+					owner + "-METADATA-003",
 				}
 			}
 
