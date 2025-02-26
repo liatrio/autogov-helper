@@ -140,7 +140,6 @@ func NewFromOptions(opts Options) *Metadata {
 		m.Artifact.Digest = opts.Digest
 	case ArtifactTypeBlob:
 		m.Artifact.Path = opts.SubjectPath
-		m.Artifact.Digest = opts.Digest
 	}
 
 	// set repo data
@@ -204,8 +203,10 @@ func ensureSHA256Prefix(digest string) string {
 
 // generate json output
 func (m *Metadata) Generate() ([]byte, error) {
-	// format digest
-	m.Artifact.Digest = ensureSHA256Prefix(m.Artifact.Digest)
+	// format digest only for container images
+	if m.Artifact.Type == string(ArtifactTypeContainerImage) {
+		m.Artifact.Digest = ensureSHA256Prefix(m.Artifact.Digest)
+	}
 
 	// marshal to json
 	return json.MarshalIndent(m, "", "  ")
