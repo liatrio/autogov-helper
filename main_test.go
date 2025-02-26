@@ -213,11 +213,8 @@ func TestDepscanCommand(t *testing.T) {
 	err = json.Unmarshal(data, &result)
 	assert.NoError(t, err)
 
-	// verify predicate fields
-	predicate := result["predicate"].(map[string]interface{})
-	assert.NotNil(t, predicate["scanner"])
-
-	scanner := predicate["scanner"].(map[string]interface{})
+	// verify scanner fields
+	scanner := result["scanner"].(map[string]interface{})
 	assert.Equal(t, "grype", scanner["name"])
 	assert.Equal(t, "0.74.7", scanner["version"])
 	assert.Equal(t, "https://github.com/anchore/grype/releases/tag/v0.74.7", scanner["uri"])

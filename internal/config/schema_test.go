@@ -97,36 +97,26 @@ func TestValidateDepscan(t *testing.T) {
 
 	t.Run("validates valid depscan", func(t *testing.T) {
 		validDepscan := []byte(`{
-			"_type": "https://in-toto.io/Statement/v1",
-			"subject": [{
-				"name": "test-image",
-				"digest": {
-					"sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
-				}
-			}],
-			"predicateType": "https://in-toto.io/attestation/vulns/v0.2",
-			"predicate": {
-				"scanner": {
-					"name": "grype",
-					"uri": "https://github.com/anchore/grype/releases/tag/v0.74.7",
-					"version": "0.74.7",
-					"db": {
-						"uri": "https://toolbox-data.anchore.io/grype/databases/listing.json",
-						"version": "1.5",
-						"lastUpdate": "2024-01-27T19:48:49Z"
-					},
-					"result": [
-						{
-							"id": "CVE-2024-1234",
-							"severity": [
-								{
-									"method": "CVSSv3",
-									"score": "7.5"
-								}
-							]
-						}
-					]
-				}
+			"scanner": {
+				"name": "grype",
+				"uri": "https://github.com/anchore/grype/releases/tag/v0.74.7",
+				"version": "0.74.7",
+				"db": {
+					"uri": "https://toolbox-data.anchore.io/grype/databases/listing.json",
+					"version": "1.5",
+					"lastUpdate": "2024-01-27T19:48:49Z"
+				},
+				"result": [
+					{
+						"id": "CVE-2024-1234",
+						"severity": [
+							{
+								"method": "CVSSv3",
+								"score": "7.5"
+							}
+						]
+					}
+				]
 			}
 		}`)
 
@@ -136,25 +126,15 @@ func TestValidateDepscan(t *testing.T) {
 
 	t.Run("fails on invalid depscan", func(t *testing.T) {
 		invalidDepscan := []byte(`{
-			"_type": "https://in-toto.io/Statement/v1",
-			"subject": [{
-				"name": "test-image",
-				"digest": {
-					"sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
-				}
-			}],
-			"predicateType": "https://in-toto.io/attestation/vulns/v0.2",
-			"predicate": {
-				"scanner": {
-					"uri": "https://github.com/anchore/grype/releases/tag/v0.74.7",
-					"version": "0.74.7",
-					"db": {
-						"uri": "https://toolbox-data.anchore.io/grype/databases/listing.json",
-						"version": "1.5",
-						"lastUpdate": "2024-01-27T19:48:49Z"
-					},
-					"result": []
-				}
+			"scanner": {
+				"uri": "https://github.com/anchore/grype/releases/tag/v0.74.7",
+				"version": "0.74.7",
+				"db": {
+					"uri": "https://toolbox-data.anchore.io/grype/databases/listing.json",
+					"version": "1.5",
+					"lastUpdate": "2024-01-27T19:48:49Z"
+				},
+				"result": []
 			}
 		}`)
 

@@ -80,20 +80,18 @@ func ValidateJSON(data []byte, schemaName string) error {
 		return err
 	}
 
-	// extract predicate portion for metadata
-	if schemaName == "metadata-schema.json" {
-		var schema map[string]interface{}
-		if err := json.Unmarshal([]byte(schemaContent), &schema); err != nil {
-			return errors.WrapError("parse schema", err)
-		}
-		if props, ok := schema["properties"].(map[string]interface{}); ok {
-			if predicate, ok := props["predicate"].(map[string]interface{}); ok {
-				predicateSchema, err := json.Marshal(predicate)
-				if err != nil {
-					return errors.WrapError("marshal predicate schema", err)
-				}
-				schemaContent = string(predicateSchema)
+	// extract predicate portion
+	var schema map[string]interface{}
+	if err := json.Unmarshal([]byte(schemaContent), &schema); err != nil {
+		return errors.WrapError("parse schema", err)
+	}
+	if props, ok := schema["properties"].(map[string]interface{}); ok {
+		if predicate, ok := props["predicate"].(map[string]interface{}); ok {
+			predicateSchema, err := json.Marshal(predicate)
+			if err != nil {
+				return errors.WrapError("marshal predicate schema", err)
 			}
+			schemaContent = string(predicateSchema)
 		}
 	}
 

@@ -70,14 +70,6 @@ type Metadata struct {
 	} `json:"security"`
 }
 
-// in-toto statement
-type MetadataStatement struct {
-	Type          string    `json:"_type"`
-	Subject       []Subject `json:"subject"`
-	PredicateType string    `json:"predicateType"`
-	Predicate     *Metadata `json:"predicate"`
-}
-
 // metadata creation options
 type Options struct {
 	// artifact fields

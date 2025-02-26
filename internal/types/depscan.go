@@ -2,7 +2,6 @@ package types
 
 import (
 	"encoding/json"
-	"strings"
 	"time"
 )
 
@@ -31,39 +30,9 @@ type DependencyScan struct {
 	} `json:"metadata,omitempty"`
 }
 
-// full in-toto statement structure
-type DepscanStatement struct {
-	Type          string          `json:"_type"`
-	Subject       []Subject       `json:"subject"`
-	PredicateType string          `json:"predicateType"`
-	Predicate     *DependencyScan `json:"predicate"`
-}
-
-// generates json representation
+// generates json representation of predicate
 func (s *DependencyScan) Generate() ([]byte, error) {
-	// create statement
-	stmt := &DepscanStatement{
-		Type:          StatementType,
-		PredicateType: DepscanPredicateTypeURI,
-		Predicate:     s,
-	}
-
-	// add subject
-	subject := Subject{
-		Name: s.SubjectName,
-		Digest: DigestHolder{
-			SHA256: strings.TrimPrefix(s.Digest, "sha256:"),
-		},
-	}
-
-	// use path for blob type
-	if s.Type != ArtifactTypeContainerImage {
-		subject.Name = s.SubjectPath
-	}
-
-	stmt.Subject = []Subject{subject}
-
-	return json.MarshalIndent(stmt, "", "  ")
+	return json.MarshalIndent(s, "", "  ")
 }
 
 // options for creating a new scan
