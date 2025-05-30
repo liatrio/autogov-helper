@@ -1,4 +1,4 @@
-FROM --platform=$BUILDPLATFORM golang:1.23-alpine AS builder
+FROM --platform=$BUILDPLATFORM golang:1.24-alpine AS builder
 WORKDIR /app
 COPY . .
 
@@ -7,7 +7,7 @@ RUN go mod download
 ARG TARGETOS TARGETARCH
 RUN CGO_ENABLED=0 GOOS=$TARGETOS GOARCH=$TARGETARCH go build -ldflags "-X main.version=${VERSION:-dev}" -o autogov-helper .
 
-FROM alpine:3.19
+FROM alpine:3.22
 LABEL org.opencontainers.image.title="autogov-helper" \
       org.opencontainers.image.description="GitHub Attestation Utility" \
       org.opencontainers.image.vendor="Liatrio" \
